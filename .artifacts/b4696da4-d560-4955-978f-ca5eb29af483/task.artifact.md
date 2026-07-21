@@ -1,0 +1,5 @@
+- [/] Fix app crash and stabilize launch
+    - [x] Update `gradle.properties`: disable R8 full mode
+    - [x] Update `AstralYaDatabase.kt`: enable destructive migration
+    - [x] Update `AndroidLauncher.kt`: ensure repository is initialized or handled
+- [ ] Verify build and sync

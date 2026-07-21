@@ -1,0 +1,555 @@
+package com.astralya.screens
+
+import com.badlogic.gdx.Screen
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
+import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.astralya.AstralYaGame
+import com.astralya.data.GameState
+import com.astralya.entities.ItemFactory
+import com.astralya.entities.ItemType
+import com.astralya.map.MapRegistry
+import kotlinx.coroutines.*
+
+// ════════════════════════════════════════════════════════════════
+// INVENTORY SCREEN
+// FIX PERF #2 #3 #4 #8 + Scaling
+// ════════════════════════════════════════════════════════════════
+
+class InventoryScreen(
+    private val game: AstralYaGame,
+    private val state: GameState,
+    private val returnScreen: Screen
+) : Screen {
+
+    private var selectedIdx = 0
+    private var catIdx      = 0
+    private val categories  = listOf("Tout", "Consommables", "Armes", "Armures", "Clés")
+
+    private var itemCache: List<Pair<String, Int>> = emptyList()
+    private var cacheValid = false
+
+    private val sb = StringBuilder(64)
+
+    companion object {
+        private val C_HEADER   = Color(0.1f, 0.1f, 0.3f, 1f)
+        private val C_GOLD     = Color(1f, 0.85f, 0.2f, 1f)
+        private val C_WHITE    = Color(1f, 1f, 1f, 1f)
+        private val C_SEL      = Color(1f, 1f, 1f, 1f)
+        private val C_UNSEL    = Color(0.72f, 0.72f, 0.88f, 1f)
+        private val C_CAT_SEL  = Color(1f, 1f, 1f, 1f)
+        private val C_CAT_UNS  = Color(0.58f, 0.58f, 0.78f, 1f)
+        private val C_EMPTY    = Color(0.5f, 0.5f, 0.6f, 1f)
+        private val C_DESC     = Color(0.65f, 0.82f, 1f, 1f)
+        private val C_STAT     = Color(0.45f, 1f, 0.45f, 1f)
+        private val C_VALUE    = Color(0.58f, 0.58f, 0.68f, 1f)
+        private val C_HINT     = Color(0.45f, 0.45f, 0.55f, 1f)
+    }
+
+    private fun refreshCache() {
+        val filter = when (catIdx) {
+            1 -> ItemType.CONSUMABLE; 2 -> ItemType.WEAPON
+            3 -> ItemType.ARMOR;      4 -> ItemType.KEY_ITEM
+            else -> null
+        }
+        itemCache = state.inventory.entries
+            .filter { (id, _) -> filter == null || ItemFactory.getById(id)?.type == filter }
+            .map { it.key to it.value }
+        cacheValid = true
+    }
+
+    override fun show() { refreshCache() }
+
+    override fun render(delta: Float) {
+        handleInput()
+        draw()
+    }
+
+    private fun handleInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+            game.setScreen(returnScreen); dispose(); return
+        }
+        val prevCat = catIdx
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT))
+            catIdx = (catIdx - 1 + categories.size) % categories.size
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT))
+            catIdx = (catIdx + 1) % categories.size
+        if (catIdx != prevCat) { cacheValid = false; selectedIdx = 0 }
+        if (!cacheValid) refreshCache()
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
+            selectedIdx = (selectedIdx + 1).coerceAtMost((itemCache.size - 1).coerceAtLeast(0))
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
+            selectedIdx = (selectedIdx - 1).coerceAtLeast(0)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+            useSelected(); cacheValid = false
+        }
+    }
+
+    private fun useSelected() {
+        val (itemId, _) = itemCache.getOrNull(selectedIdx) ?: return
+        val item = ItemFactory.getById(itemId) ?: return
+        if (item.type != ItemType.CONSUMABLE) return
+        val target = state.party.filter { it.isAlive }.minByOrNull { it.currentHp } ?: return
+        when {
+            item.hpRestore > 0 -> { target.heal(item.hpRestore);    state.removeItem(itemId) }
+            item.mpRestore > 0 -> { target.restoreMp(item.mpRestore); state.removeItem(itemId) }
+        }
+    }
+
+    private fun draw() {
+        val W = game.viewport.worldWidth
+        val H = game.viewport.worldHeight
+
+        Gdx.gl.glClearColor(0.04f, 0.04f, 0.12f, 1f)
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        game.batch.projectionMatrix = game.viewport.camera.combined
+        game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
+
+        // FIX PERF #8 — header shape, puis batch texte
+        game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        game.shapeRenderer.color = C_HEADER
+        game.shapeRenderer.rect(0f, H - 78f, W, 78f)
+        game.shapeRenderer.end()
+
+        game.batch.begin()
+
+        game.fonts.large.setColor(C_GOLD)
+        game.fonts.large.draw(game.batch, "INVENTAIRE", 22f, H - 20f)
+
+        game.fonts.normal.setColor(C_GOLD)
+        sb.clear(); sb.append("Or: ").append(state.gold)
+        game.fonts.normal.draw(game.batch, sb, W - 175f, H - 20f)
+
+        for (i in categories.indices) {
+            val sel = i == catIdx
+            val fnt = if (sel) game.fonts.normal else game.fonts.small
+            fnt.setColor(if (sel) C_CAT_SEL else C_CAT_UNS)
+            fnt.draw(game.batch, categories[i], 22f + i * (W / categories.size), H - 56f)
+        }
+
+        if (itemCache.isEmpty()) {
+            game.fonts.normal.setColor(C_EMPTY)
+            game.fonts.normal.draw(game.batch, "Aucun objet.", 38f, H - 115f)
+        } else {
+            for (i in itemCache.indices) {
+                val (itemId, qty) = itemCache[i]
+                val item = ItemFactory.getById(itemId) ?: continue
+                val sel  = i == selectedIdx
+                val fnt  = if (sel) game.fonts.normal else game.fonts.small
+                fnt.setColor(if (sel) C_SEL else C_UNSEL)
+                sb.clear()
+                sb.append(if (sel) "► " else "  ").append(item.name).append("  ×").append(qty)
+                fnt.draw(game.batch, sb, 22f, H - 108f - i * 36f)
+                if (sel) {
+                    game.fonts.tiny.setColor(C_DESC)
+                    game.fonts.tiny.draw(game.batch, item.description, 22f, H - 122f - i * 36f)
+                }
+            }
+        }
+
+        val selItem = itemCache.getOrNull(selectedIdx)?.first?.let { ItemFactory.getById(it) }
+        if (selItem != null) {
+            game.fonts.small.setColor(C_STAT)
+            sb.clear()
+            if (selItem.attackBonus  > 0) sb.append("ATK +").append(selItem.attackBonus).append("  ")
+            if (selItem.defenseBonus > 0) sb.append("DEF +").append(selItem.defenseBonus).append("  ")
+            if (selItem.magicBonus   > 0) sb.append("MAG +").append(selItem.magicBonus).append("  ")
+            if (selItem.hpRestore    > 0) sb.append("HP +").append(selItem.hpRestore).append("  ")
+            if (selItem.mpRestore    > 0) sb.append("MP +").append(selItem.mpRestore).append("  ")
+            if (sb.isNotEmpty()) game.fonts.small.draw(game.batch, sb, 22f, 58f)
+
+            game.fonts.small.setColor(C_VALUE)
+            sb.clear(); sb.append("Valeur: ").append(selItem.value).append(" Or")
+            game.fonts.small.draw(game.batch, sb, 22f, 36f)
+        }
+
+        game.fonts.tiny.setColor(C_HINT)
+        game.fonts.tiny.draw(game.batch,
+            "←→ Cat.  ↑↓ Sélect.  ENTRÉE Utiliser  ESC Retour", 22f, 14f)
+
+        game.batch.setColor(C_WHITE)
+        game.batch.end()
+        game.fonts.resetColors()
+    }
+
+    override fun resize(w: Int, h: Int) { game.viewport.update(w, h, true) }
+    override fun pause()  {}
+    override fun resume() {}
+    override fun hide()   {}
+    override fun dispose() {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// PARTY SCREEN
+// FIX PERF #2 #3 #4 #8 + Scaling
+// ════════════════════════════════════════════════════════════════
+
+class PartyScreen(
+    private val game: AstralYaGame,
+    private val state: GameState,
+    private val returnScreen: Screen
+) : Screen {
+
+    private var selHero = 0
+    private val sb = StringBuilder(64)
+
+    companion object {
+        private val C_GOLD    = Color(1f, 0.85f, 0.2f, 1f)
+        private val C_WHITE   = Color(1f, 1f, 1f, 1f)
+        private val C_UNSEL   = Color(0.68f, 0.68f, 0.82f, 1f)
+        private val C_HP      = Color(1f, 0.45f, 0.45f, 1f)
+        private val C_MP      = Color(0.35f, 0.55f, 1f, 1f)
+        private val C_STATS   = Color(0.82f, 0.82f, 1f, 1f)
+        private val C_SKILL_T = Color(1f, 0.85f, 0.35f, 1f)
+        private val C_SKILL   = Color(0.65f, 0.82f, 1f, 1f)
+        private val C_EQUIP   = Color(0.82f, 0.82f, 0.48f, 1f)
+        private val C_EXP     = Color(0.45f, 1f, 0.45f, 1f)
+        private val C_HINT    = Color(0.45f, 0.45f, 0.55f, 1f)
+    }
+
+    override fun show() {}
+
+    override fun render(delta: Float) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+            game.setScreen(returnScreen); dispose(); return
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT))
+            selHero = (selHero + 1) % state.party.size.coerceAtLeast(1)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT))
+            selHero = (selHero - 1 + state.party.size.coerceAtLeast(1)) %
+                      state.party.size.coerceAtLeast(1)
+
+        val W = game.viewport.worldWidth
+        val H = game.viewport.worldHeight
+
+        Gdx.gl.glClearColor(0.04f, 0.04f, 0.12f, 1f)
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        game.batch.projectionMatrix = game.viewport.camera.combined
+
+        game.batch.begin()
+
+        game.fonts.large.setColor(C_GOLD)
+        game.fonts.large.draw(game.batch, "ÉQUIPE", 22f, H - 22f)
+
+        for (i in state.party.indices) {
+            val hero = state.party[i]
+            val x    = 28f + i * (W / 3.2f)
+            val sel  = i == selHero
+            val fnt  = if (sel) game.fonts.medium else game.fonts.normal
+            fnt.setColor(if (sel) C_WHITE else C_UNSEL)
+            fnt.draw(game.batch, "${if (sel) "►" else " "} ${hero.name}", x, H - 76f)
+
+            game.fonts.small.setColor(C_EXP)
+            sb.clear(); sb.append("Nv.").append(hero.level)
+                .append("  ").append(hero.experience).append('/').append(hero.expToNextLevel)
+                .append(" EXP")
+            game.fonts.small.draw(game.batch, sb, x, H - 106f)
+
+            game.fonts.small.setColor(C_HP)
+            sb.clear(); sb.append("HP  ").append(hero.currentHp).append('/').append(hero.maxHp)
+            game.fonts.small.draw(game.batch, sb, x, H - 130f)
+
+            game.fonts.small.setColor(C_MP)
+            sb.clear(); sb.append("MP  ").append(hero.currentMp).append('/').append(hero.maxMp)
+            game.fonts.small.draw(game.batch, sb, x, H - 150f)
+
+            game.fonts.small.setColor(C_STATS)
+            sb.clear(); sb.append("ATK ").append(hero.totalAttack())
+            game.fonts.small.draw(game.batch, sb, x, H - 178f)
+            sb.clear(); sb.append("DEF ").append(hero.totalDefense())
+            game.fonts.small.draw(game.batch, sb, x, H - 196f)
+            sb.clear(); sb.append("MAG ").append(hero.totalMagic())
+            game.fonts.small.draw(game.batch, sb, x, H - 214f)
+            sb.clear(); sb.append("AGI ").append(hero.agility)
+            game.fonts.small.draw(game.batch, sb, x, H - 232f)
+
+            if (sel) {
+                game.fonts.small.setColor(C_SKILL_T)
+                game.fonts.small.draw(game.batch, "── Compétences ──", x, H - 265f)
+                for (j in hero.skills.indices) {
+                    game.fonts.tiny.setColor(C_SKILL)
+                    sb.clear(); sb.append("• ").append(hero.skills[j].name)
+                        .append(" (").append(hero.skills[j].mpCost).append("MP)")
+                    game.fonts.tiny.draw(game.batch, sb, x, H - 285f - j * 22f)
+                }
+                game.fonts.tiny.setColor(C_EQUIP)
+                sb.clear(); sb.append("Arme: ").append(hero.weapon?.name ?: "—")
+                game.fonts.tiny.draw(game.batch, sb, x, H - 380f)
+                sb.clear(); sb.append("Armure: ").append(hero.armor?.name ?: "—")
+                game.fonts.tiny.draw(game.batch, sb, x, H - 400f)
+                sb.clear(); sb.append("Acc: ").append(hero.accessory?.name ?: "—")
+                game.fonts.tiny.draw(game.batch, sb, x, H - 420f)
+            }
+        }
+
+        game.fonts.tiny.setColor(C_HINT)
+        game.fonts.tiny.draw(game.batch, "←→ Héros  |  ESC Retour", 22f, 14f)
+        game.batch.setColor(C_WHITE)
+        game.batch.end()
+        game.fonts.resetColors()
+    }
+
+    override fun resize(w: Int, h: Int) { game.viewport.update(w, h, true) }
+    override fun pause()  {}
+    override fun resume() {}
+    override fun hide()   {}
+    override fun dispose() {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// SAVE SCREEN
+// FIX REVIEW #2 + Scaling
+// ════════════════════════════════════════════════════════════════
+
+class SaveScreen(
+    private val game: AstralYaGame,
+    private val state: GameState,
+    val mode: Mode,
+    private val returnScreen: Screen? = null
+) : Screen {
+
+    enum class Mode { SAVE, LOAD }
+
+    private var selSlot   = 0
+    private val SLOTS     = 3
+    private var statusMsg = ""
+    private var saving    = false
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val sb = StringBuilder(64)
+
+    companion object {
+        private val C_GOLD    = Color(1f, 0.85f, 0.2f, 1f)
+        private val C_WHITE   = Color(1f, 1f, 1f, 1f)
+        private val C_SEL     = Color(1f, 1f, 1f, 1f)
+        private val C_UNSEL   = Color(0.68f, 0.68f, 0.82f, 1f)
+        private val C_OK      = Color(0.3f, 1f, 0.3f, 1f)
+        private val C_ERR     = Color(1f, 0.3f, 0.3f, 1f)
+        private val C_HINT    = Color(0.45f, 0.45f, 0.55f, 1f)
+    }
+
+    override fun show() {}
+
+    override fun render(delta: Float) {
+        handleInput()
+        draw()
+    }
+
+    private fun handleInput() {
+        if (saving) return
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.setScreen(returnScreen ?: MainMenuScreen(game)); dispose(); return
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
+            selSlot = (selSlot + 1) % SLOTS
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
+            selSlot = (selSlot - 1 + SLOTS) % SLOTS
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+            if (mode == Mode.SAVE) doSave() else doLoad()
+        }
+    }
+
+    private fun doSave() {
+        saving = true; statusMsg = "Sauvegarde en cours..."
+        scope.launch {
+            runCatching {
+                val save = com.astralya.data.entities.GameSaveEntity(
+                    slot            = selSlot,
+                    saveName        = "Slot ${selSlot + 1}",
+                    currentMapId    = state.currentMapId,
+                    playerX         = state.playerX,
+                    playerY         = state.playerY,
+                    gold            = state.gold,
+                    playtimeSeconds = state.playtimeSeconds,
+                    crystalsFound   = state.crystalsFound.joinToString(","),
+                    defeatedBosses  = state.defeatedBosses.joinToString(",")
+                )
+                game.repository.saveGame(save)
+                state.party.forEach { hero ->
+                    game.repository.saveHero(
+                        com.astralya.data.entities.HeroEntity(
+                            id = hero.id.name, name = hero.name,
+                            heroClass = hero.role.name,
+                            level = hero.level, experience = hero.experience,
+                            maxHp = hero.maxHp, currentHp = hero.currentHp,
+                            maxMp = hero.maxMp, currentMp = hero.currentMp,
+                            attack = hero.attack, defense = hero.defense,
+                            agility = hero.agility, magic = hero.magic
+                        )
+                    )
+                }
+                Gdx.app.postRunnable { statusMsg = "✅ Sauvegarde réussie !"; saving = false }
+            }.onFailure { e ->
+                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message}"; saving = false }
+            }
+        }
+    }
+
+    private fun doLoad() {
+        saving = true; statusMsg = "Chargement..."
+        scope.launch {
+            runCatching {
+                val save = game.repository.loadGame(selSlot)
+                if (save != null) {
+                    Gdx.app.postRunnable {
+                        state.currentMapId    = save.currentMapId
+                        state.playerX         = save.playerX
+                        state.playerY         = save.playerY
+                        state.gold            = save.gold
+                        state.playtimeSeconds = save.playtimeSeconds
+                        save.crystalsFound.split(",").filter { it.isNotBlank() }.forEach { state.crystalsFound.add(it) }
+                        save.defeatedBosses.split(",").filter { it.isNotBlank() }.forEach { state.defeatedBosses.add(it) }
+                        statusMsg = "✅ Partie chargée !"
+                        saving    = false
+                        game.setScreen(ExplorationScreen(game, state))
+                        dispose()
+                    }
+                } else {
+                    Gdx.app.postRunnable { statusMsg = "Aucune sauvegarde dans ce slot."; saving = false }
+                }
+            }.onFailure { e ->
+                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message}"; saving = false }
+            }
+        }
+    }
+
+    private fun draw() {
+        val W = game.viewport.worldWidth
+        val H = game.viewport.worldHeight
+
+        Gdx.gl.glClearColor(0.03f, 0.03f, 0.1f, 1f)
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        game.batch.projectionMatrix = game.viewport.camera.combined
+
+        game.batch.begin()
+
+        game.fonts.large.setColor(C_GOLD)
+        game.fonts.large.draw(game.batch, if (mode == Mode.SAVE) "SAUVEGARDER" else "CHARGER", 24f, H - 24f)
+
+        for (i in 0 until SLOTS) {
+            val sel = i == selSlot
+            val fnt = if (sel) game.fonts.medium else game.fonts.normal
+            fnt.setColor(if (sel) C_SEL else C_UNSEL)
+            sb.clear(); sb.append(if (sel) "► " else "  ").append("Slot ").append(i + 1)
+            fnt.draw(game.batch, sb, 38f, H - 118f - i * 68f)
+        }
+
+        if (statusMsg.isNotBlank()) {
+            val col = when {
+                statusMsg.startsWith("✅") -> C_OK
+                statusMsg.startsWith("❌") -> C_ERR
+                else                       -> C_WHITE
+            }
+            game.fonts.normal.setColor(col)
+            game.fonts.normal.draw(game.batch, statusMsg, 38f, H - 340f)
+        }
+
+        game.fonts.tiny.setColor(C_HINT)
+        game.fonts.tiny.draw(game.batch, "↑↓ Sélectionner  |  ENTRÉE Confirmer  |  ESC Retour", 24f, 14f)
+
+        game.batch.setColor(C_WHITE)
+        game.batch.end()
+        game.fonts.resetColors()
+    }
+
+    override fun resize(w: Int, h: Int) { game.viewport.update(w, h, true) }
+    override fun pause()  {}
+    override fun resume() {}
+    override fun hide()   {}
+    override fun dispose() { scope.cancel() }
+}
+
+// ════════════════════════════════════════════════════════════════
+// OPTIONS SCREEN
+// FIX PERF #2 #3 #8 + Scaling
+// ════════════════════════════════════════════════════════════════
+
+class OptionsScreen(private val game: AstralYaGame) : Screen {
+
+    private var selIdx  = 0
+    private val options = listOf("Volume Musique", "Volume SFX", "Musique", "SFX", "Retour")
+    private val sb = StringBuilder(32)
+
+    companion object {
+        private val C_GOLD  = Color(1f, 0.85f, 0.2f, 1f)
+        private val C_WHITE = Color(1f, 1f, 1f, 1f)
+        private val C_SEL   = Color(1f, 1f, 1f, 1f)
+        private val C_UNSEL = Color(0.68f, 0.68f, 0.82f, 1f)
+    }
+
+    override fun show() {}
+
+    override fun render(delta: Float) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.setScreen(MainMenuScreen(game)); dispose(); return
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
+            selIdx = (selIdx + 1) % options.size
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
+            selIdx = (selIdx - 1 + options.size) % options.size
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+            when (selIdx) {
+                2 -> game.audioManager.isMusicEnabled = !game.audioManager.isMusicEnabled
+                3 -> game.audioManager.isSfxEnabled   = !game.audioManager.isSfxEnabled
+                4 -> { game.setScreen(MainMenuScreen(game)); dispose(); return }
+            }
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) when (selIdx) {
+            0 -> game.audioManager.musicVolume += 0.1f
+            1 -> game.audioManager.sfxVolume += 0.1f
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) when (selIdx) {
+            0 -> game.audioManager.musicVolume -= 0.1f
+            1 -> game.audioManager.sfxVolume -= 0.1f
+        }
+
+        val W = game.viewport.worldWidth
+        val H = game.viewport.worldHeight
+
+        Gdx.gl.glClearColor(0.04f, 0.04f, 0.12f, 1f)
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        game.batch.projectionMatrix = game.viewport.camera.combined
+
+        game.batch.begin()
+
+        game.fonts.large.setColor(C_GOLD)
+        game.fonts.large.draw(game.batch, "OPTIONS", 24f, H - 24f)
+
+        for (i in options.indices) {
+            val sel = i == selIdx
+            val fnt = if (sel) game.fonts.medium else game.fonts.normal
+            fnt.setColor(if (sel) C_SEL else C_UNSEL)
+            sb.clear()
+            sb.append(if (sel) "► " else "  ").append(options[i])
+            when (i) {
+                0 -> sb.append(" : ").append((game.audioManager.musicVolume * 10).toInt()).append("/10")
+                1 -> sb.append(" : ").append((game.audioManager.sfxVolume   * 10).toInt()).append("/10")
+                2 -> sb.append(" : ").append(if (game.audioManager.isMusicEnabled) "ON" else "OFF")
+                3 -> sb.append(" : ").append(if (game.audioManager.isSfxEnabled)   "ON" else "OFF")
+            }
+            fnt.draw(game.batch, sb, 38f, H - 100f - i * 58f)
+        }
+
+        game.batch.setColor(C_WHITE)
+        game.batch.end()
+        game.fonts.resetColors()
+    }
+
+    override fun resize(w: Int, h: Int) { game.viewport.update(w, h, true) }
+    override fun pause()  {}
+    override fun resume() {}
+    override fun hide()   {}
+    override fun dispose() {}
+}

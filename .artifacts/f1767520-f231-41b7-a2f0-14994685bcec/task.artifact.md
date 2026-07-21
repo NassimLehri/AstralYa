@@ -1,0 +1,18 @@
+- [x] Resolve JVM signature clash in `AudioManager.kt`
+    - [x] Add custom setter for `musicVolume`
+    - [x] Add custom setter for `sfxVolume` (for consistency)
+    - [x] Remove `setMusicVolume` function
+- [x] Downgrade Kotlin to 2.3.0 and Upgrade Room to 2.8.4 for compatibility
+    - [x] Update root `build.gradle.kts` (Kotlin 2.3.0)
+    - [x] Update `android/build.gradle.kts` (Room 2.8.4, Kotlin stdlib 2.3.0)
+    - [x] Update `core/build.gradle.kts` (Room 2.8.4, Kotlin test 2.3.0)
+    - [x] Update `gradle.properties` (Room 2.8.4)
+- [x] Fix Room deprecation in `AstralYaDatabase.kt`
+- [x] Ajouter un module Desktop (LWJGL3) pour le test rapide
+    - [x] Créer `lwjgl3/build.gradle.kts`
+    - [x] Créer les mocks pour le repository desktop (`DesktopMocks.kt`)
+    - [x] Créer le lanceur `Lwjgl3Launcher.kt`
+    - [x] Inclure le module dans `settings.gradle.kts`
+- [x] Vérification finale
+    - [x] Run `./gradlew clean :android:assembleDebug` (Success)
+    - [x] Run `./gradlew :lwjgl3:assemble` (Success)
