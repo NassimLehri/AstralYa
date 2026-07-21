@@ -136,7 +136,7 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
         }
 
         game.fonts.tiny.setColor(C_HINT)
-        game.fonts.tiny.draw(game.batch, "↑↓ Naviguer  |  ENTRÉE Confirmer", W * 0.36f, 28f)
+        game.fonts.tiny.draw(game.batch, "Appuyez pour choisir une option", W * 0.36f, 28f)
 
         game.batch.setColor(C_WHITE)
         game.batch.end()

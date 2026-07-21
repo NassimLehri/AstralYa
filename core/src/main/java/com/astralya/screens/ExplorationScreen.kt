@@ -44,6 +44,7 @@ class ExplorationScreen(
 
     private var pixelRegion: TextureRegion? = null
     private var groundRegion: TextureRegion? = null
+    private var heroTexture: Texture? = null
 
     // Joystick
     private val joystickBase   = Vector2(140f, 140f)
@@ -52,11 +53,15 @@ class ExplorationScreen(
     private var isTouchingJoy  = false
     private val touchVec       = Vector3()
 
+    // Action Button
+    private val actionButtonRect = Rectangle(660f, 60f, 100f, 100f)
+
     companion object {
         private val C_NPC_HINT = Color(1f, 1f, 0.4f, 1f)
         private val C_PORTAL   = Color(0.2f, 0.4f, 1f, 0.4f)
         private val C_JOY_BASE = Color(1f, 1f, 1f, 0.25f)
         private val C_JOY_KNOB = Color(1f, 1f, 1f, 0.50f)
+        private val C_ACTION_BG = Color(1f, 0.8f, 0.2f, 0.4f)
         private val C_SHADOW   = Color(0f, 0f, 0f, 0.3f)
         private val C_GOLD     = Color(1f, 0.85f, 0.1f, 1f)
     }
@@ -86,6 +91,7 @@ class ExplorationScreen(
         pixmap.dispose()
 
         updateGroundTexture()
+        heroTexture = try { game.assetLoader.getTexture("sprites/nassim.png") } catch(e: Exception) { null }
         playZoneMusic()
     }
 
@@ -117,6 +123,17 @@ class ExplorationScreen(
         else if (showMenu) handleMenuInput()
         else {
             handleMovement(delta)
+            
+            // Interaction tactile (bouton Action)
+            if (Gdx.input.justTouched()) {
+                touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+                game.viewport.unproject(touchVec)
+                if (actionButtonRect.contains(touchVec.x, touchVec.y)) {
+                    if (!inputConsumed) checkNpcInteraction(force = true)
+                    if (!inputConsumed) checkChests(force = true)
+                }
+            }
+
             if (!inputConsumed) checkNpcInteraction()
             if (!inputConsumed) checkChests()
             if (!inputConsumed) checkPortals()
@@ -186,8 +203,8 @@ class ExplorationScreen(
         }
     }
 
-    private fun checkNpcInteraction() {
-        if (!(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
+    private fun checkNpcInteraction(force: Boolean = false) {
+        if (!force && !(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
         playerRect.set(playerX - 50f, playerY - 50f, 100f, 100f)
         for (npc in currentMap.npcs) {
             otherRect.set(npc.position.x - 20f, npc.position.y - 20f, 40f, 40f)
@@ -201,8 +218,8 @@ class ExplorationScreen(
         }
     }
 
-    private fun checkChests() {
-        if (!(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
+    private fun checkChests(force: Boolean = false) {
+        if (!force && !(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
         playerRect.set(playerX - 40f, playerY - 40f, 80f, 80f)
         for (chest in currentMap.chests) {
             if (state.isChestOpened(chest.id)) continue
@@ -227,15 +244,40 @@ class ExplorationScreen(
     private fun handleMenuInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) menuIndex = (menuIndex+1)%menuItems.size
         if (Gdx.input.isKeyJustPressed(Input.Keys.UP))   menuIndex = (menuIndex-1+menuItems.size)%menuItems.size
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            when(menuIndex) {
-                0 -> { showMenu=false; game.setScreen(InventoryScreen(game, state, this)) }
-                1 -> { showMenu=false; game.setScreen(PartyScreen(game, state, this)) }
-                2 -> { showMenu=false; game.setScreen(SaveScreen(game, state, SaveScreen.Mode.SAVE, this)) }
-                3 -> showMenu = false
+        
+        // Touch in menu
+        if (Gdx.input.justTouched()) {
+            touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchVec)
+            val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
+            
+            for (i in menuItems.indices) {
+                val menuX = W/2f - 100f
+                val menuY = H/2f + 100f - i * 50f
+                if (touchVec.x > menuX && touchVec.x < menuX + 200f && touchVec.y < menuY && touchVec.y > menuY - 40f) {
+                    if (menuIndex == i) {
+                        executeMenuAction()
+                        return
+                    } else {
+                        menuIndex = i
+                    }
+                }
             }
         }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            executeMenuAction()
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) showMenu = false
+    }
+
+    private fun executeMenuAction() {
+        when(menuIndex) {
+            0 -> { showMenu=false; game.setScreen(InventoryScreen(game, state, this)) }
+            1 -> { showMenu=false; game.setScreen(PartyScreen(game, state, this)) }
+            2 -> { showMenu=false; game.setScreen(SaveScreen(game, state, SaveScreen.Mode.SAVE, this)) }
+            3 -> showMenu = false
+        }
     }
 
     private fun checkRandomEncounter(delta: Float) {
@@ -319,9 +361,8 @@ class ExplorationScreen(
         game.batch.setColor(C_SHADOW)
         game.batch.draw(pixelRegion!!, playerX - camX - 14f, playerY - camY - 18f, 28f, 10f)
         game.batch.setColor(Color.WHITE)
-        val heroTex = try { game.assetLoader.getTexture("sprites/nassim.png") } catch(e: Exception) { null }
-        if (heroTex != null) {
-            game.batch.draw(heroTex, playerX - camX - 24f, playerY - camY - 24f, 48f, 48f)
+        if (heroTexture != null) {
+            game.batch.draw(heroTexture, playerX - camX - 24f, playerY - camY - 24f, 48f, 48f)
         } else {
             game.batch.setColor(Color.CYAN)
             game.batch.draw(pixelRegion!!, playerX - camX - 15f, playerY - camY - 15f, 30f, 30f)
@@ -345,17 +386,41 @@ class ExplorationScreen(
             game.fonts.normal.draw(game.batch, dialogueLines[dialogueIndex], 60f, 130f, W - 120f, -1, true)
         }
 
+        // In-game Menu
+        if (showMenu) {
+            game.batch.setColor(0f, 0f, 0.1f, 0.85f)
+            game.batch.draw(pixelRegion!!, W/2f - 120f, H/2f - 150f, 240f, 300f)
+            for (i in menuItems.indices) {
+                val sel = i == menuIndex
+                game.fonts.medium.setColor(if (sel) Color.GOLD else Color.WHITE)
+                game.fonts.medium.draw(game.batch, menuItems[i], W/2f - 100f, H/2f + 100f - i * 50f)
+            }
+        }
+
         game.batch.end()
 
-        // Joystick
-        if (isTouchingJoy) {
+        // UI Shapes (Joystick & Action Button)
+        if (!dialogueActive && !showMenu) {
             Gdx.gl.glEnable(GL20.GL_BLEND)
             game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
-            game.shapeRenderer.color = C_JOY_BASE
-            game.shapeRenderer.circle(joystickBase.x, joystickBase.y, joystickRadius)
-            game.shapeRenderer.color = C_JOY_KNOB
-            game.shapeRenderer.circle(joystickKnob.x, joystickKnob.y, 35f)
+            
+            // Joystick
+            if (isTouchingJoy) {
+                game.shapeRenderer.color = C_JOY_BASE
+                game.shapeRenderer.circle(joystickBase.x, joystickBase.y, joystickRadius)
+                game.shapeRenderer.color = C_JOY_KNOB
+                game.shapeRenderer.circle(joystickKnob.x, joystickKnob.y, 35f)
+            }
+            
+            // Action Button
+            game.shapeRenderer.color = C_ACTION_BG
+            game.shapeRenderer.circle(actionButtonRect.x + actionButtonRect.width/2f, actionButtonRect.y + actionButtonRect.height/2f, 50f)
             game.shapeRenderer.end()
+            
+            game.batch.begin()
+            game.fonts.medium.setColor(Color.WHITE)
+            game.fonts.medium.draw(game.batch, "ACTION", actionButtonRect.x + 10f, actionButtonRect.y + 65f)
+            game.batch.end()
         }
 
         game.fonts.resetColors()

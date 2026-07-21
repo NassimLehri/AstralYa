@@ -13,10 +13,16 @@ data class QuestProgress(
 
 class GameState {
 
+    companion object {
+        const val STARTING_MAP_ID = "village_depart"
+        const val STARTING_X = 200f
+        const val STARTING_Y = 200f
+    }
+
     val party: MutableList<Hero>   = mutableListOf()
-    var currentMapId: String       = "village_depart"
-    var playerX: Float             = 200f
-    var playerY: Float             = 200f
+    var currentMapId: String       = STARTING_MAP_ID
+    var playerX: Float             = STARTING_X
+    var playerY: Float             = STARTING_Y
     var gold: Int                  = 100
     var playtimeSeconds: Long      = 0L
     val inventory: MutableMap<String, Int>              = mutableMapOf()
@@ -27,7 +33,7 @@ class GameState {
 
     fun newGame() {
         party.clear(); party.addAll(HeroFactory.createDefaultParty())
-        currentMapId = "village_depart"; playerX = 200f; playerY = 200f
+        currentMapId = STARTING_MAP_ID; playerX = STARTING_X; playerY = STARTING_Y
         gold = 100; playtimeSeconds = 0L
         inventory.clear(); questProgress.clear()
         crystalsFound.clear(); defeatedBosses.clear(); openedChests.clear()

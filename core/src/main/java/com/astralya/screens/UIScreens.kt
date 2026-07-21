@@ -67,11 +67,49 @@ class InventoryScreen(
         draw()
     }
 
+    private val touchPos = com.badlogic.gdx.math.Vector3()
+
     private fun handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
             Gdx.input.isKeyJustPressed(Input.Keys.X)) {
             game.setScreen(returnScreen); dispose(); return
         }
+        
+        // Touch interaction
+        if (Gdx.input.justTouched()) {
+            touchPos.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchPos)
+            val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
+            
+            // Back button (bottom right)
+            if (touchPos.x > W - 150f && touchPos.y < 50f) {
+                game.setScreen(returnScreen); dispose(); return
+            }
+            
+            // Categories (top)
+            if (touchPos.y > H - 78f) {
+                for (i in categories.indices) {
+                    val catX = 22f + i * (W / categories.size)
+                    if (touchPos.x > catX && touchPos.x < catX + (W/categories.size)) {
+                        catIdx = i; cacheValid = false; selectedIdx = 0
+                        break
+                    }
+                }
+            }
+            
+            // Items list
+            if (touchPos.y < H - 100f && touchPos.y > 100f) {
+                for (i in itemCache.indices) {
+                    val itemY = H - 108f - i * 36f
+                    if (touchPos.y < itemY && touchPos.y > itemY - 30f) {
+                        if (selectedIdx == i) useSelected()
+                        else selectedIdx = i
+                        break
+                    }
+                }
+            }
+        }
+
         val prevCat = catIdx
         if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT))
             catIdx = (catIdx - 1 + categories.size) % categories.size
@@ -170,8 +208,10 @@ class InventoryScreen(
         }
 
         game.fonts.tiny.setColor(C_HINT)
-        game.fonts.tiny.draw(game.batch,
-            "←→ Cat.  ↑↓ Sélect.  ENTRÉE Utiliser  ESC Retour", 22f, 14f)
+        game.fonts.tiny.draw(game.batch, "Appuyez sur un objet pour l'utiliser", 22f, 14f)
+        
+        game.fonts.normal.setColor(C_WHITE)
+        game.fonts.normal.draw(game.batch, "[ RETOUR ]", W - 150f, 35f)
 
         game.batch.setColor(C_WHITE)
         game.batch.end()
@@ -198,6 +238,7 @@ class PartyScreen(
 
     private var selHero = 0
     private val sb = StringBuilder(64)
+    private val touchPos = com.badlogic.gdx.math.Vector3()
 
     companion object {
         private val C_GOLD    = Color(1f, 0.85f, 0.2f, 1f)
@@ -220,6 +261,28 @@ class PartyScreen(
             Gdx.input.isKeyJustPressed(Input.Keys.X)) {
             game.setScreen(returnScreen); dispose(); return
         }
+        
+        // Touch interaction
+        if (Gdx.input.justTouched()) {
+            touchPos.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchPos)
+            val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
+            
+            // Back button
+            if (touchPos.x > W - 150f && touchPos.y < 50f) {
+                game.setScreen(returnScreen); dispose(); return
+            }
+            
+            // Hero selection
+            for (i in state.party.indices) {
+                val heroX = 28f + i * (W / 3.2f)
+                if (touchPos.x > heroX && touchPos.x < heroX + (W/3.2f)) {
+                    selHero = i
+                    break
+                }
+            }
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT))
             selHero = (selHero + 1) % state.party.size.coerceAtLeast(1)
         if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT))
@@ -291,7 +354,11 @@ class PartyScreen(
         }
 
         game.fonts.tiny.setColor(C_HINT)
-        game.fonts.tiny.draw(game.batch, "←→ Héros  |  ESC Retour", 22f, 14f)
+        game.fonts.tiny.draw(game.batch, "Appuyez sur un héros pour voir ses détails", 22f, 14f)
+        
+        game.fonts.normal.setColor(C_WHITE)
+        game.fonts.normal.draw(game.batch, "[ RETOUR ]", W - 150f, 35f)
+        
         game.batch.setColor(C_WHITE)
         game.batch.end()
         game.fonts.resetColors()
@@ -322,6 +389,7 @@ class SaveScreen(
     private val SLOTS     = 3
     private var statusMsg = ""
     private var saving    = false
+    private val touchPos = com.badlogic.gdx.math.Vector3()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val sb = StringBuilder(64)
@@ -348,6 +416,32 @@ class SaveScreen(
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(returnScreen ?: MainMenuScreen(game)); dispose(); return
         }
+        
+        // Touch interaction
+        if (Gdx.input.justTouched()) {
+            touchPos.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchPos)
+            val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
+            
+            // Back button
+            if (touchPos.x > W - 150f && touchPos.y < 50f) {
+                game.setScreen(returnScreen ?: MainMenuScreen(game)); dispose(); return
+            }
+            
+            // Slot selection
+            for (i in 0 until SLOTS) {
+                val slotY = H - 118f - i * 68f
+                if (touchPos.y < slotY && touchPos.y > slotY - 50f) {
+                    if (selSlot == i) {
+                        if (mode == Mode.SAVE) doSave() else doLoad()
+                    } else {
+                        selSlot = i
+                    }
+                    break
+                }
+            }
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
             selSlot = (selSlot + 1) % SLOTS
         if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
@@ -479,6 +573,7 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
     private var selIdx  = 0
     private val options = listOf("Volume Musique", "Volume SFX", "Musique", "SFX", "Retour")
     private val sb = StringBuilder(32)
+    private val touchPos = com.badlogic.gdx.math.Vector3()
 
     companion object {
         private val C_GOLD  = Color(1f, 0.85f, 0.2f, 1f)
@@ -493,6 +588,35 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(MainMenuScreen(game)); dispose(); return
         }
+        
+        // Touch interaction
+        if (Gdx.input.justTouched()) {
+            touchPos.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchPos)
+            val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
+            
+            for (i in options.indices) {
+                val optY = H - 100f - i * 58f
+                if (touchPos.y < optY && touchPos.y > optY - 45f) {
+                    if (selIdx == i) {
+                        if (i == 4) { game.setScreen(MainMenuScreen(game)); dispose(); return }
+                        else if (i == 2) game.audioManager.isMusicEnabled = !game.audioManager.isMusicEnabled
+                        else if (i == 3) game.audioManager.isSfxEnabled = !game.audioManager.isSfxEnabled
+                        else if (touchPos.x > W / 2f) { // Simple right side touch to increase
+                            if (i == 0) game.audioManager.musicVolume += 0.1f
+                            else if (i == 1) game.audioManager.sfxVolume += 0.1f
+                        } else { // Left side touch to decrease
+                            if (i == 0) game.audioManager.musicVolume -= 0.1f
+                            else if (i == 1) game.audioManager.sfxVolume -= 0.1f
+                        }
+                    } else {
+                        selIdx = i
+                    }
+                    break
+                }
+            }
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
             selIdx = (selIdx + 1) % options.size
         if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
@@ -541,6 +665,9 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
             }
             fnt.draw(game.batch, sb, 38f, H - 100f - i * 58f)
         }
+        
+        game.fonts.tiny.setColor(C_UNSEL)
+        game.fonts.tiny.draw(game.batch, "Appuyez pour sélectionner, re-appuyez pour changer", 24f, 14f)
 
         game.batch.setColor(C_WHITE)
         game.batch.end()
