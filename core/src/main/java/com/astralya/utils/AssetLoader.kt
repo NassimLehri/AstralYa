@@ -86,37 +86,42 @@ class AssetLoader(private val manager: AssetManager) {
     fun <T> get(path: String, type: Class<T>): T = manager.get(path, type)
 
     fun getTexture(path: String): Texture = try {
+        if (!manager.isLoaded(path)) manager.finishLoadingAsset<Texture>(path)
         manager.get(path, Texture::class.java)
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Texture non trouvée: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Texture non trouvée ou non chargée: $path")
         throw e
     }
 
     fun getAtlas(path: String): TextureAtlas = try {
+        if (!manager.isLoaded(path)) manager.finishLoadingAsset<TextureAtlas>(path)
         manager.get(path, TextureAtlas::class.java)
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Atlas non trouvé: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Atlas non trouvé ou non chargé: $path")
         throw e
     }
 
     fun getMusic(path: String): Music = try {
+        if (!manager.isLoaded(path)) manager.finishLoadingAsset<Music>(path)
         manager.get(path, Music::class.java)
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Musique non trouvée: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Musique non trouvée ou non chargée: $path")
         throw e
     }
 
     fun getSound(path: String): Sound = try {
+        if (!manager.isLoaded(path)) manager.finishLoadingAsset<Sound>(path)
         manager.get(path, Sound::class.java)
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Son non trouvé: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Son non trouvé ou non chargé: $path")
         throw e
     }
 
     fun getTiledMap(path: String): TiledMap = try {
+        if (!manager.isLoaded(path)) manager.finishLoadingAsset<TiledMap>(path)
         manager.get(path, TiledMap::class.java)
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Map Tiled non trouvée: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Map Tiled non trouvée ou non chargée: $path")
         throw e
     }
 

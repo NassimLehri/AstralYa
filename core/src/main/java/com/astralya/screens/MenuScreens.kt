@@ -109,10 +109,14 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
         game.shapeRenderer.color = Color(0.02f, 0.02f, 0.1f, 1f)
         game.shapeRenderer.rect(0f, 0f, W, H)
         game.shapeRenderer.color = Color(1f, 1f, 1f, 0.6f)
-        // FIX PERF #4 — for classique, positions pré-calculées
+        // FIX PERF #4 — for classique, positions pré-calculées avec mouvement lent
         for (i in STAR_POSITIONS.indices) {
             val (sx, sy) = STAR_POSITIONS[i]
-            game.shapeRenderer.circle(sx, sy, 2f)
+            // Vitesse différente pour un effet de parallaxe léger
+            val speed = 15f + (i % 3) * 10f 
+            val dy = (sy - elapsed * speed) % H
+            val finalY = if (dy < 0) dy + H else dy
+            game.shapeRenderer.circle(sx, finalY, if (i % 2 == 0) 1.5f else 2.2f)
         }
         game.shapeRenderer.end()
 

@@ -19,6 +19,7 @@ class QuestLogScreen(
 
     private var pixelRegion: TextureRegion? = null
     private val activeQuests = state.getActiveQuests()
+    private var elapsed = 0f
 
     override fun show() {
         val pixmap = com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888)
@@ -26,28 +27,39 @@ class QuestLogScreen(
         pixmap.fill()
         pixelRegion = TextureRegion(Texture(pixmap))
         pixmap.dispose()
+        elapsed = 0f
     }
 
     override fun render(delta: Float) {
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK) || Gdx.input.justTouched()) {
+        elapsed += delta
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(parentScreen)
+            return
+        }
+        
+        if (Gdx.input.justTouched()) {
+            val touchX = Gdx.input.x.toFloat() * (game.viewport.worldWidth / Gdx.graphics.width)
+            val touchY = (Gdx.graphics.height - Gdx.input.y.toFloat()) * (game.viewport.worldHeight / Gdx.graphics.height)
+            if (touchX > game.viewport.worldWidth - 160f && touchY < 60f) {
+                game.setScreen(parentScreen)
+                return
+            }
         }
 
         val W = game.viewport.worldWidth
         val H = game.viewport.worldHeight
 
-        Gdx.gl.glClearColor(0.05f, 0.05f, 0.1f, 1f)
+        Gdx.gl.glClearColor(0.04f, 0.04f, 0.12f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         game.batch.projectionMatrix = game.viewport.camera.combined
         game.batch.begin()
 
-        // Background frame
-        game.batch.setColor(0f, 0f, 0.2f, 0.8f)
-        game.batch.draw(pixelRegion!!, 50f, 50f, W - 100f, H - 100f)
+        // UI Frame
+        game.batch.draw(game.assetLoader.getTexture("sprites/ui_frame.png"), 10f, 10f, W - 20f, H - 20f)
 
         game.fonts.large.setColor(Color.GOLD)
-        game.fonts.large.draw(game.batch, "Journal des Quêtes", 80f, H - 80f)
+        game.fonts.large.draw(game.batch, "Journal des Quêtes", 35f, H - 35f)
 
         if (activeQuests.isEmpty()) {
             game.fonts.normal.setColor(Color.LIGHT_GRAY)
@@ -56,20 +68,21 @@ class QuestLogScreen(
             activeQuests.forEachIndexed { index, progress ->
                 val quest = QuestRegistry.getQuest(progress.questId)
                 if (quest != null) {
-                    val y = H - 150f - index * 100f
+                    val y = H - 120f - index * 100f
                     
-                    game.fonts.medium.setColor(Color.WHITE)
-                    game.fonts.medium.draw(game.batch, "${quest.title}", 100f, y)
+                    val pulse = 0.9f + com.badlogic.gdx.math.MathUtils.sin(elapsed * 4f + index) * 0.1f
+                    game.fonts.medium.setColor(pulse, pulse, 1f, 1f)
+                    game.fonts.medium.draw(game.batch, "${quest.title}", 60f, y)
                     
                     game.fonts.small.setColor(Color.CYAN)
                     val step = quest.steps.getOrNull(progress.currentStep)
-                    game.fonts.small.draw(game.batch, "Objectif : ${step?.description ?: "Terminé"}", 120f, y - 30f)
+                    game.fonts.small.draw(game.batch, "Objectif : ${step?.description ?: "Terminé"}", 80f, y - 30f)
                 }
             }
         }
 
-        game.fonts.normal.setColor(Color.GRAY)
-        game.fonts.normal.draw(game.batch, "Appuyez pour retourner", W / 2f - 120f, 85f)
+        game.fonts.normal.setColor(Color.WHITE)
+        game.fonts.normal.draw(game.batch, "[ RETOUR ]", W - 160f, 45f)
 
         game.batch.end()
     }

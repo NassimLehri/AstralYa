@@ -99,6 +99,14 @@ class BattleScreen(
     // Modern Visuals
     private var postProcessShader: ShaderProgram? = null
     private val ambientColor = Color(1f, 1f, 1f, 1f)
+    
+    // Polish Visuals
+    private var shakeTimer = 0f
+    private var shakeIntensity = 0f
+    private val flashTimers = mutableMapOf<Any, Float>()
+    
+    private data class FloatingText(val text: String, val color: Color, var x: Float, var y: Float, var life: Float)
+    private val floatingTexts = mutableListOf<FloatingText>()
 
     private fun addLog(msg: String) {
         if (battleLog.size >= 6) battleLog.removeFirst()
@@ -148,6 +156,22 @@ class BattleScreen(
     // ── Update ────────────────────────────────────────────────────────────────
 
     private fun update(delta: Float) {
+        // Update Polish Visuals
+        if (shakeTimer > 0) shakeTimer -= delta
+        val it = flashTimers.entries.iterator()
+        while (it.hasNext()) {
+            val entry = it.next()
+            entry.setValue(entry.value - delta)
+            if (entry.value <= 0) it.remove()
+        }
+        val ftIt = floatingTexts.iterator()
+        while (ftIt.hasNext()) {
+            val ft = ftIt.next()
+            ft.life -= delta
+            ft.y += 40f * delta
+            if (ft.life <= 0) ftIt.remove()
+        }
+
         when (phase) {
             Phase.PLAYER_ACTION       -> handleActionMenu()
             Phase.PLAYER_TARGET       -> handleTargetMenu()
@@ -254,7 +278,15 @@ class BattleScreen(
 
     private fun showNextResult() {
         if (resultIdx < pendingResults.size) {
-            addLog(pendingResults[resultIdx].message); resultIdx++
+            val result = pendingResults[resultIdx]
+            addLog(result.message)
+            
+            // Trigger Visual Effects based on result
+            if (result.damageDealt > 0 || result.healingDone > 0) {
+                applyResultVisuals(result)
+            }
+            
+            resultIdx++
         } else {
             battleState = combat.checkCombatEnd(battleState)
             when {
@@ -262,6 +294,53 @@ class BattleScreen(
                 battleState.isOver    -> { phase = Phase.GAME_OVER; animTimer = 0f }
                 else                  -> advanceTurn()
             }
+        }
+    }
+
+    private fun applyResultVisuals(result: ActionResult) {
+        // This is a simplified way to guess targets for visuals since ActionResult 
+        // doesn't store the target object directly. In a real scenario, we'd pass the target.
+        // For now, we'll use the current targetIdx for Player Action results.
+        
+        val W = game.viewport.worldWidth
+        val H = game.viewport.worldHeight
+        
+        if (result.damageDealt > 0) {
+            shakeTimer = if (result.critical) 0.4f else 0.2f
+            shakeIntensity = if (result.critical) 8f else 4f
+            
+            // Estimate target position for floating text
+            val tx: Float
+            val ty: Float
+            if (phase == Phase.ANIMATING) {
+                // If hero attacking enemy
+                val eIdx = targetIdx.coerceIn(0, aliveEnemies.size - 1)
+                tx = W * 0.20f + eIdx * (W / (aliveEnemies.size + 1).coerceAtLeast(1))
+                ty = H * 0.65f
+                aliveEnemies.getOrNull(eIdx)?.let { flashTimers[it] = 0.15f }
+            } else {
+                // Enemy turn (hero taking damage)
+                val hIdx = heroIndex.coerceIn(0, party.size - 1)
+                tx = 50f
+                ty = H * 0.31f - hIdx * 80f
+                party.getOrNull(hIdx)?.let { flashTimers[it] = 0.15f }
+            }
+            
+            floatingTexts.add(FloatingText(
+                result.damageDealt.toString(), 
+                if (result.critical) Color.ORANGE else Color.RED, 
+                tx, ty + 20f, 1.0f
+            ))
+            game.assetLoader.getSound(if (result.critical) "audio/sfx_critical.ogg" else "audio/sfx_hit.ogg").play()
+        }
+        
+        if (result.healingDone > 0) {
+            floatingTexts.add(FloatingText(
+                "+${result.healingDone}", 
+                Color.GREEN, 
+                W * 0.25f, H * 0.3f, 1.0f
+            ))
+            game.assetLoader.getSound("audio/sfx_heal.ogg").play()
         }
     }
 
@@ -356,6 +435,16 @@ class BattleScreen(
         game.batch.projectionMatrix = game.viewport.camera.combined
         game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
         
+        // Screen Shake
+        if (shakeTimer > 0) {
+            val shakeX = (Math.random().toFloat() - 0.5f) * 2f * shakeIntensity
+            val shakeY = (Math.random().toFloat() - 0.5f) * 2f * shakeIntensity
+            game.viewport.camera.translate(shakeX, shakeY, 0f)
+            game.viewport.camera.update()
+            game.batch.projectionMatrix = game.viewport.camera.combined
+            game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
+        }
+
         // Appliquer l'ambiance au rendu du monde (fonds)
         game.batch.color = ambientColor
 
@@ -437,7 +526,12 @@ class BattleScreen(
             val ey = H * 0.65f
             val size = if (enemy.isBoss) 120f else 64f
             
+            // Hit Flash
+            if (flashTimers.containsKey(enemy)) game.batch.setColor(Color.WHITE)
+            else game.batch.setColor(C_WHITE)
+            
             game.batch.draw(game.assetLoader.getEnemyTexture(enemy.id), ex - size/2f, ey - size/2f, size, size)
+            game.batch.setColor(C_WHITE)
             
             game.fonts.small.setColor(C_TXT_ENE)
             game.fonts.small.draw(game.batch, enemy.name, ex - 48f, ey - size/2f - 6f)
@@ -452,9 +546,18 @@ class BattleScreen(
             val bx = 20f; val by = H * 0.31f - i * 80f
             
             // Texture du héros
-            game.batch.setColor(if (hero.isAlive) Color.WHITE else Color.GRAY)
+            val baseColor = if (hero.isAlive) Color.WHITE else Color.GRAY
+            if (flashTimers.containsKey(hero)) game.batch.setColor(Color.WHITE)
+            else game.batch.setColor(baseColor)
+            
+            // Active Hero Bounce
+            var offsetY = 0f
+            if (i == heroIndex && hero.isAlive && phase == Phase.PLAYER_ACTION) {
+                offsetY = MathUtils.sin(elapsed * 6f) * 4f
+            }
+
             val heroTex = game.assetLoader.getTexture("sprites/${hero.id.name.lowercase()}.png")
-            game.batch.draw(heroTex, bx, by - 26f, 38f, 48f)
+            game.batch.draw(heroTex, bx, by - 26f + offsetY, 38f, 48f)
             game.batch.setColor(Color.WHITE)
 
             game.fonts.normal.setColor(if (hero.isAlive) C_WHITE else C_GRAY)
@@ -532,9 +635,23 @@ class BattleScreen(
             game.fonts.tiny.draw(game.batch, logList[logList.size - 1 - i],
                 W * 0.58f, logY - i * 20f)
         }
+        
+        // Floating Texts
+        for (ft in floatingTexts) {
+            ft.color.a = ft.life.coerceIn(0f, 1f)
+            game.fonts.medium.setColor(ft.color)
+            game.fonts.medium.draw(game.batch, ft.text, ft.x, ft.y)
+        }
 
         game.batch.setColor(C_WHITE)
         game.batch.end()
+        
+        // Reset camera position after shake
+        if (shakeTimer > 0) {
+            game.viewport.camera.position.set(W / 2f, H / 2f, 0f)
+            game.viewport.camera.update()
+        }
+        
         game.fonts.resetColors()
         game.batch.shader = oldShader
     }

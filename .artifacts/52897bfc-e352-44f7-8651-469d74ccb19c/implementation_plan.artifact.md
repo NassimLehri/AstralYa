@@ -1,48 +1,43 @@
-# Implementation Plan - Dynamic Weather System
+# Implementation Plan - UI Optimization & System Robustness
 
-This plan introduces a dynamic weather system that adds rain, snow, and storms to the world. Weather will affect the ambient lighting and spawn atmospheric particles across the screen.
-
-## User Review Required
-
-> [!IMPORTANT]
-> **Audio Assets**: I will implement the logic for weather sounds (rain falling, thunder), but you will need to download `sfx_rain.ogg` and `sfx_thunder.ogg` and place them in `assets/audio/` to hear them.
->
-> **Performance**: Rain and snow use screen-space particles. I will keep the particle count low to maintain a high frame rate on mobile.
+This plan focuses on improving the UI aesthetics across all menus and ensuring the game state and saving systems are robust against common mobile crashes.
 
 ## Proposed Changes
 
-### 1. Weather Logic
-Create a system to manage weather transitions.
+### UI Components Polish
+Bring all sub-menus (Inventory, Party, Save, Options) to the same level of polish as the Main Menu and Exploration Screen.
 
-#### [NEW] [WeatherSystem.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/utils/WeatherSystem.kt)
-- Define weather types: `CLEAR`, `RAIN`, `SNOW`, `STORM`.
-- Handle transition timers (e.g., it stays rainy for 2-5 minutes).
-- Calculate "Weather Tint" (e.g., gray/dark blue for rain).
+#### [MODIFY] [UIScreens.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/UIScreens.kt)
+- **Unified UI Framing**: Use the `ui_frame.png` asset to create a cohesive border around menu panels.
+- **Enhanced Save Slots**:
+    - Each slot will now display: **Map Name**, **Gold Count**, and **Playtime** (formatted as HH:MM).
+    - If a slot is empty, it will clearly state "Emplacement Vide".
+- **Dynamic Selection**:
+    - Selection cursors and highlighted items will have a "pulsing" animation using a sine wave.
+- **Party Screen Bars**:
+    - Replace text-based HP/MP with graphical bars for a more modern look.
+- **Scrolling Inventory**:
+    - Add logic to scroll the item list if it exceeds the visible area, ensuring all items are accessible even with a large inventory.
 
-### 2. Environmental Particles
-Create the visual effects for weather.
+---
 
-#### [NEW] [rain.p](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/particles/rain.p) & [snow.p](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/particles/snow.p)
-- Particle definitions for falling rain and drifting snow.
+### System Robustness & Crash Prevention
+Address potential edge cases in the data layer.
 
-#### [MODIFY] [ExplorationScreen.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/ExplorationScreen.kt)
-- Integrate `WeatherSystem`.
-- Spawn weather particles as "Screen Space" effects (they move with the player's screen, not the world).
-- Combine `TimeSystem` tint with `WeatherSystem` tint for final lighting.
+#### [MODIFY] [UIScreens.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/UIScreens.kt) (SaveScreen)
+- **Error Feedback**: Improve the error message handling when saving or loading fails (e.g., due to storage permissions or disk full).
+- **Graceful Null Handling**: Ensure that trying to load an empty or corrupted slot doesn't lead to a crash.
 
-### 3. Combat Interoperability
-Ensure weather carries over into battles.
-
-#### [MODIFY] [BattleScreen.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/BattleScreen.kt)
-- Show weather particles in the background of combat if it's raining or snowing in the world.
+#### [MODIFY] [AssetLoader.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/utils/AssetLoader.kt)
+- **Safe Retrieval**: Ensure that asset lookups (especially music) don't crash if called before the manager is fully updated (though already mostly handled).
 
 ## Verification Plan
 
-### Automated Tests
-- **Build**: Ensure the project compiles with the new `WeatherSystem`.
-- **Sync**: Verify Gradle sync.
-
 ### Manual Verification
-- **Visuals**: Enter a map and wait for a weather transition. Verify that the screen darkens and rain starts falling.
-- **Audio**: Check if the code attempts to play weather sounds (monitor Logcat for missing file warnings).
-- **Combat**: Trigger a battle while it's raining and verify the rain is still visible in the background.
+- **Save/Load**: Create a save, then verify it appears with the correct Map Name and Gold count in the load menu.
+- **Inventory**: Fill the inventory to verify scrolling.
+- **Party Screen**: Check that HP/MP bars reflect the actual values accurately.
+- **Animation**: Verify the smooth pulsing effect on menu selections.
+
+### Performance Check
+- Ensure that the graphical frames and bars don't cause significant overhead during menu transitions on mobile.

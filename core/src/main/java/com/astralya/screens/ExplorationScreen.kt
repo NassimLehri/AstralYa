@@ -268,15 +268,19 @@ class ExplorationScreen(
             checkRandomEncounter(delta)
         }
         
-        // Mise à jour de la caméra pour suivre le joueur avec limites
+        // Mise à jour de la caméra pour suivre le joueur avec limites (LISSAGE)
         val cam = game.viewport.camera as OrthographicCamera
         val mapW = currentMap.widthTiles * TILE_SIZE
         val mapH = currentMap.heightTiles * TILE_SIZE
         val halfW = game.viewport.worldWidth / 2f
         val halfH = game.viewport.worldHeight / 2f
         
-        cam.position.x = playerX.coerceIn(halfW, mapW - halfW)
-        cam.position.y = playerY.coerceIn(halfH, mapH - halfH)
+        val targetX = playerX.coerceIn(halfW, mapW - halfW)
+        val targetY = playerY.coerceIn(halfH, mapH - halfH)
+        
+        // Interpolation linéaire pour un suivi fluide
+        cam.position.x = MathUtils.lerp(cam.position.x, targetX, 0.12f)
+        cam.position.y = MathUtils.lerp(cam.position.y, targetY, 0.12f)
         cam.update()
     }
 
@@ -498,6 +502,12 @@ class ExplorationScreen(
             val opened = state.isChestOpened(c.id)
             game.batch.setColor(if (opened) Color.GRAY else Color.GOLD)
             game.batch.draw(pixelRegion!!, c.position.x - 12f, c.position.y - 12f, 24f, 24f)
+            
+            // Marqueur d'interaction pour coffre
+            if (!opened && Vector2.dst(playerX, playerY, c.position.x, c.position.y) < 70f) {
+                game.fonts.medium.setColor(Color.YELLOW)
+                game.fonts.medium.draw(game.batch, "[!]", c.position.x - 10f, c.position.y + 35f + MathUtils.sin(stateTime * 6f) * 4f)
+            }
         }
 
         // PNJ
@@ -508,9 +518,15 @@ class ExplorationScreen(
             game.batch.setColor(Color.ORANGE)
             game.batch.draw(pixelRegion!!, npc.position.x - 12f, npc.position.y - 12f, 24f, 32f)
             
-            if (Vector2.dst(playerX, playerY, npc.position.x, npc.position.y) < 100f) {
+            val dist = Vector2.dst(playerX, playerY, npc.position.x, npc.position.y)
+            if (dist < 100f) {
                 game.fonts.small.setColor(Color.WHITE)
                 game.fonts.small.draw(game.batch, npc.name, npc.position.x - 40f, npc.position.y + 45f)
+            }
+            // Marqueur d'interaction pour PNJ
+            if (dist < 80f) {
+                game.fonts.medium.setColor(Color.YELLOW)
+                game.fonts.medium.draw(game.batch, "[!]", npc.position.x - 10f, npc.position.y + 65f + MathUtils.sin(stateTime * 6f) * 4f)
             }
         }
 

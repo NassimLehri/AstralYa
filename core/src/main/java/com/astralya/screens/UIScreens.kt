@@ -6,12 +6,14 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.math.MathUtils
 import com.astralya.AstralYaGame
 import com.astralya.data.GameState
 import com.astralya.entities.ItemFactory
 import com.astralya.entities.ItemType
 import com.astralya.map.MapRegistry
 import kotlinx.coroutines.*
+import java.util.Locale
 
 // ════════════════════════════════════════════════════════════════
 // INVENTORY SCREEN
@@ -30,6 +32,8 @@ class InventoryScreen(
 
     private var itemCache: List<Pair<String, Int>> = emptyList()
     private var cacheValid = false
+    private var scrollIdx  = 0
+    private var elapsed    = 0f
 
     private val sb = StringBuilder(64)
 
@@ -60,9 +64,13 @@ class InventoryScreen(
         cacheValid = true
     }
 
-    override fun show() { refreshCache() }
+    override fun show() { 
+        refreshCache() 
+        elapsed = 0f
+    }
 
     override fun render(delta: Float) {
+        elapsed += delta
         handleInput()
         draw()
     }
@@ -119,10 +127,14 @@ class InventoryScreen(
         if (catIdx != prevCat) { cacheValid = false; selectedIdx = 0 }
         if (!cacheValid) refreshCache()
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN))
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
             selectedIdx = (selectedIdx + 1).coerceAtMost((itemCache.size - 1).coerceAtLeast(0))
-        if (Gdx.input.isKeyJustPressed(Input.Keys.UP))
+            if (selectedIdx >= scrollIdx + 8) scrollIdx = (selectedIdx - 7).coerceAtLeast(0)
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
             selectedIdx = (selectedIdx - 1).coerceAtLeast(0)
+            if (selectedIdx < scrollIdx) scrollIdx = selectedIdx
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
             Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
             useSelected(); cacheValid = false
@@ -150,16 +162,23 @@ class InventoryScreen(
         game.batch.projectionMatrix = game.viewport.camera.combined
         game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
 
-        // FIX PERF #8 — header shape, puis batch texte
+        // Fond sombre
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        game.shapeRenderer.color = Color(0.04f, 0.04f, 0.12f, 1f)
+        game.shapeRenderer.rect(0f, 0f, W, H)
+        
+        // Header
         game.shapeRenderer.color = C_HEADER
         game.shapeRenderer.rect(0f, H - 78f, W, 78f)
         game.shapeRenderer.end()
 
         game.batch.begin()
+        
+        // UI Frame
+        game.batch.draw(game.assetLoader.getTexture("sprites/ui_frame.png"), 10f, 10f, W - 20f, H - 20f)
 
         game.fonts.large.setColor(C_GOLD)
-        game.fonts.large.draw(game.batch, "INVENTAIRE", 22f, H - 20f)
+        game.fonts.large.draw(game.batch, "INVENTAIRE", 35f, H - 35f)
 
         game.fonts.normal.setColor(C_GOLD)
         sb.clear(); sb.append("Or: ").append(state.gold)
@@ -167,8 +186,9 @@ class InventoryScreen(
 
         for (i in categories.indices) {
             val sel = i == catIdx
+            val pulse = if (sel) 0.7f + MathUtils.sin(elapsed * 5f) * 0.3f else 1f
             val fnt = if (sel) game.fonts.normal else game.fonts.small
-            fnt.setColor(if (sel) C_CAT_SEL else C_CAT_UNS)
+            fnt.setColor(pulse, pulse, if (sel) 0.4f else pulse, 1f)
             fnt.draw(game.batch, categories[i], 22f + i * (W / categories.size), H - 56f)
         }
 
@@ -176,19 +196,31 @@ class InventoryScreen(
             game.fonts.normal.setColor(C_EMPTY)
             game.fonts.normal.draw(game.batch, "Aucun objet.", 38f, H - 115f)
         } else {
-            for (i in itemCache.indices) {
+            val visibleCount = 8
+            for (i in scrollIdx until (scrollIdx + visibleCount).coerceAtMost(itemCache.size)) {
                 val (itemId, qty) = itemCache[i]
                 val item = ItemFactory.getById(itemId) ?: continue
                 val sel  = i == selectedIdx
+                val pulse = if (sel) 0.8f + MathUtils.sin(elapsed * 8f) * 0.2f else 1f
                 val fnt  = if (sel) game.fonts.normal else game.fonts.small
-                fnt.setColor(if (sel) C_SEL else C_UNSEL)
+                
+                val itemY = H - 108f - (i - scrollIdx) * 36f
+                
+                fnt.setColor(pulse, pulse, if (sel) 0.2f else pulse, 1f)
                 sb.clear()
                 sb.append(if (sel) "► " else "  ").append(item.name).append("  ×").append(qty)
-                fnt.draw(game.batch, sb, 22f, H - 108f - i * 36f)
+                fnt.draw(game.batch, sb, 22f, itemY)
                 if (sel) {
                     game.fonts.tiny.setColor(C_DESC)
-                    game.fonts.tiny.draw(game.batch, item.description, 22f, H - 122f - i * 36f)
+                    game.fonts.tiny.draw(game.batch, item.description, 22f, itemY - 14f)
                 }
+            }
+            
+            // Scroll Indicator
+            if (itemCache.size > visibleCount) {
+                game.fonts.tiny.setColor(C_HINT)
+                if (scrollIdx > 0) game.fonts.tiny.draw(game.batch, "▲", W - 40f, H - 90f)
+                if (scrollIdx + visibleCount < itemCache.size) game.fonts.tiny.draw(game.batch, "▼", W - 40f, 160f)
             }
         }
 
@@ -238,6 +270,7 @@ class PartyScreen(
 ) : Screen {
 
     private var selHero = 0
+    private var elapsed = 0f
     private val sb = StringBuilder(64)
     private val touchPos = com.badlogic.gdx.math.Vector3()
 
@@ -245,8 +278,10 @@ class PartyScreen(
         private val C_GOLD    = Color(1f, 0.85f, 0.2f, 1f)
         private val C_WHITE   = Color(1f, 1f, 1f, 1f)
         private val C_UNSEL   = Color(0.68f, 0.68f, 0.82f, 1f)
-        private val C_HP      = Color(1f, 0.45f, 0.45f, 1f)
-        private val C_MP      = Color(0.35f, 0.55f, 1f, 1f)
+        private val C_HP_BG   = Color(0.25f, 0.05f, 0.05f, 0.9f)
+        private val C_HP_FG   = Color(1f, 0.45f, 0.45f, 1f)
+        private val C_MP_BG   = Color(0.05f, 0.05f, 0.25f, 0.9f)
+        private val C_MP_FG   = Color(0.35f, 0.55f, 1f, 1f)
         private val C_STATS   = Color(0.82f, 0.82f, 1f, 1f)
         private val C_SKILL_T = Color(1f, 0.85f, 0.35f, 1f)
         private val C_SKILL   = Color(0.65f, 0.82f, 1f, 1f)
@@ -255,9 +290,10 @@ class PartyScreen(
         private val C_HINT    = Color(0.45f, 0.45f, 0.55f, 1f)
     }
 
-    override fun show() {}
+    override fun show() { elapsed = 0f }
 
     override fun render(delta: Float) {
+        elapsed += delta
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
             Gdx.input.isKeyJustPressed(Input.Keys.X) ||
             Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
@@ -298,18 +334,47 @@ class PartyScreen(
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         game.batch.projectionMatrix = game.viewport.camera.combined
+        game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
+
+        // Fond sombre
+        game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        game.shapeRenderer.color = Color(0.04f, 0.04f, 0.12f, 1f)
+        game.shapeRenderer.rect(0f, 0f, W, H)
+        
+        // Barres HP/MP
+        for (i in state.party.indices) {
+            val hero = state.party[i]
+            val x    = 28f + i * (W / 3.2f)
+            val hpR = hero.currentHp.toFloat() / hero.maxHp.coerceAtLeast(1)
+            val mpR = hero.currentMp.toFloat() / hero.maxMp.coerceAtLeast(1)
+            
+            game.shapeRenderer.color = C_HP_BG
+            game.shapeRenderer.rect(x, H - 130f, 120f, 8f)
+            game.shapeRenderer.color = C_HP_FG
+            game.shapeRenderer.rect(x, H - 130f, 120f * hpR, 8f)
+            
+            game.shapeRenderer.color = C_MP_BG
+            game.shapeRenderer.rect(x, H - 150f, 120f, 6f)
+            game.shapeRenderer.color = C_MP_FG
+            game.shapeRenderer.rect(x, H - 150f, 120f * mpR, 6f)
+        }
+        game.shapeRenderer.end()
 
         game.batch.begin()
+        
+        // UI Frame
+        game.batch.draw(game.assetLoader.getTexture("sprites/ui_frame.png"), 10f, 10f, W - 20f, H - 20f)
 
         game.fonts.large.setColor(C_GOLD)
-        game.fonts.large.draw(game.batch, "ÉQUIPE", 22f, H - 22f)
+        game.fonts.large.draw(game.batch, "ÉQUIPE", 35f, H - 35f)
 
         for (i in state.party.indices) {
             val hero = state.party[i]
             val x    = 28f + i * (W / 3.2f)
             val sel  = i == selHero
+            val pulse = if (sel) 0.8f + MathUtils.sin(elapsed * 6f) * 0.2f else 1f
             val fnt  = if (sel) game.fonts.medium else game.fonts.normal
-            fnt.setColor(if (sel) C_WHITE else C_UNSEL)
+            fnt.setColor(pulse, pulse, if (sel) 0.3f else pulse, 1f)
             fnt.draw(game.batch, "${if (sel) "►" else " "} ${hero.name}", x, H - 76f)
 
             game.fonts.small.setColor(C_EXP)
@@ -318,13 +383,14 @@ class PartyScreen(
                 .append(" EXP")
             game.fonts.small.draw(game.batch, sb, x, H - 106f)
 
-            game.fonts.small.setColor(C_HP)
-            sb.clear(); sb.append("HP  ").append(hero.currentHp).append('/').append(hero.maxHp)
-            game.fonts.small.draw(game.batch, sb, x, H - 130f)
+            // Les barres sont déja dessinées en-dessous
+            game.fonts.tiny.setColor(C_HP_FG)
+            sb.clear(); sb.append(hero.currentHp).append('/').append(hero.maxHp)
+            game.fonts.tiny.draw(game.batch, sb, x + 50f, H - 114f)
 
-            game.fonts.small.setColor(C_MP)
-            sb.clear(); sb.append("MP  ").append(hero.currentMp).append('/').append(hero.maxMp)
-            game.fonts.small.draw(game.batch, sb, x, H - 150f)
+            game.fonts.tiny.setColor(C_MP_FG)
+            sb.clear(); sb.append(hero.currentMp).append('/').append(hero.maxMp)
+            game.fonts.tiny.draw(game.batch, sb, x + 50f, H - 138f)
 
             game.fonts.small.setColor(C_STATS)
             sb.clear(); sb.append("ATK ").append(hero.totalAttack())
@@ -391,7 +457,10 @@ class SaveScreen(
     private val SLOTS     = 3
     private var statusMsg = ""
     private var saving    = false
+    private var elapsed   = 0f
     private val touchPos = com.badlogic.gdx.math.Vector3()
+
+    private var saveDetails: Array<com.astralya.data.entities.GameSaveEntity?> = arrayOfNulls(SLOTS)
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val sb = StringBuilder(64)
@@ -401,14 +470,27 @@ class SaveScreen(
         private val C_WHITE   = Color(1f, 1f, 1f, 1f)
         private val C_SEL     = Color(1f, 1f, 1f, 1f)
         private val C_UNSEL   = Color(0.68f, 0.68f, 0.82f, 1f)
+        private val C_DETAILS = Color(0.5f, 0.7f, 1f, 1f)
         private val C_OK      = Color(0.3f, 1f, 0.3f, 1f)
         private val C_ERR     = Color(1f, 0.3f, 0.3f, 1f)
         private val C_HINT    = Color(0.45f, 0.45f, 0.55f, 1f)
     }
 
-    override fun show() {}
+    override fun show() {
+        elapsed = 0f
+        refreshSaves()
+    }
+
+    private fun refreshSaves() {
+        scope.launch {
+            for (i in 0 until SLOTS) {
+                saveDetails[i] = game.repository.loadGame(i)
+            }
+        }
+    }
 
     override fun render(delta: Float) {
+        elapsed += delta
         handleInput()
         draw()
     }
@@ -480,9 +562,13 @@ class SaveScreen(
                         )
                     )
                 }
-                Gdx.app.postRunnable { statusMsg = "✅ Sauvegarde réussie !"; saving = false }
+                Gdx.app.postRunnable { 
+                    statusMsg = "✅ Sauvegarde réussie !"
+                    saving = false
+                    refreshSaves()
+                }
             }.onFailure { e ->
-                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message}"; saving = false }
+                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message ?: "Inconnue"}"; saving = false }
             }
         }
     }
@@ -510,7 +596,7 @@ class SaveScreen(
                     Gdx.app.postRunnable { statusMsg = "Aucune sauvegarde dans ce slot."; saving = false }
                 }
             }.onFailure { e ->
-                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message}"; saving = false }
+                Gdx.app.postRunnable { statusMsg = "❌ Erreur : ${e.message ?: "Inconnue"}"; saving = false }
             }
         }
     }
@@ -525,16 +611,37 @@ class SaveScreen(
         game.batch.projectionMatrix = game.viewport.camera.combined
 
         game.batch.begin()
+        
+        // UI Frame
+        game.batch.draw(game.assetLoader.getTexture("sprites/ui_frame.png"), 10f, 10f, W - 20f, H - 20f)
 
         game.fonts.large.setColor(C_GOLD)
-        game.fonts.large.draw(game.batch, if (mode == Mode.SAVE) "SAUVEGARDER" else "CHARGER", 24f, H - 24f)
+        game.fonts.large.draw(game.batch, if (mode == Mode.SAVE) "SAUVEGARDER" else "CHARGER", 35f, H - 35f)
 
         for (i in 0 until SLOTS) {
             val sel = i == selSlot
+            val pulse = if (sel) 0.8f + MathUtils.sin(elapsed * 6f) * 0.2f else 1f
             val fnt = if (sel) game.fonts.medium else game.fonts.normal
-            fnt.setColor(if (sel) C_SEL else C_UNSEL)
+            fnt.setColor(pulse, pulse, if (sel) 0.3f else pulse, 1f)
+            
+            val slotY = H - 118f - i * 68f
             sb.clear(); sb.append(if (sel) "► " else "  ").append("Slot ").append(i + 1)
-            fnt.draw(game.batch, sb, 38f, H - 118f - i * 68f)
+            fnt.draw(game.batch, sb, 38f, slotY)
+            
+            // Details
+            val save = saveDetails[i]
+            if (save != null) {
+                game.fonts.tiny.setColor(C_DETAILS)
+                val hours = save.playtimeSeconds / 3600
+                val mins  = (save.playtimeSeconds % 3600) / 60
+                val mapName = MapRegistry.getMap(save.currentMapId)?.name ?: save.currentMapId
+                sb.clear(); sb.append(mapName).append(" | Or: ").append(save.gold)
+                    .append(" | ").append(String.format(Locale.US, "%02d:%02d", hours, mins))
+                game.fonts.tiny.draw(game.batch, sb, 160f, slotY - 10f)
+            } else {
+                game.fonts.tiny.setColor(C_UNSEL)
+                game.fonts.tiny.draw(game.batch, "— Emplacement Vide —", 160f, slotY - 10f)
+            }
         }
 
         if (statusMsg.isNotBlank()) {
@@ -573,6 +680,7 @@ class SaveScreen(
 class OptionsScreen(private val game: AstralYaGame) : Screen {
 
     private var selIdx  = 0
+    private var elapsed = 0f
     private val options = listOf("Volume Musique", "Volume SFX", "Musique", "SFX", "Retour")
     private val sb = StringBuilder(32)
     private val touchPos = com.badlogic.gdx.math.Vector3()
@@ -584,9 +692,10 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
         private val C_UNSEL = Color(0.68f, 0.68f, 0.82f, 1f)
     }
 
-    override fun show() {}
+    override fun show() { elapsed = 0f }
 
     override fun render(delta: Float) {
+        elapsed += delta
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(MainMenuScreen(game)); dispose(); return
         }
@@ -646,14 +755,18 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
         game.batch.projectionMatrix = game.viewport.camera.combined
 
         game.batch.begin()
+        
+        // UI Frame
+        game.batch.draw(game.assetLoader.getTexture("sprites/ui_frame.png"), 10f, 10f, W - 20f, H - 20f)
 
         game.fonts.large.setColor(C_GOLD)
-        game.fonts.large.draw(game.batch, "OPTIONS", 24f, H - 24f)
+        game.fonts.large.draw(game.batch, "OPTIONS", 35f, H - 35f)
 
         for (i in options.indices) {
             val sel = i == selIdx
+            val pulse = if (sel) 0.8f + MathUtils.sin(elapsed * 6f) * 0.2f else 1f
             val fnt = if (sel) game.fonts.medium else game.fonts.normal
-            fnt.setColor(if (sel) C_SEL else C_UNSEL)
+            fnt.setColor(pulse, pulse, if (sel) 0.3f else pulse, 1f)
             sb.clear()
             sb.append(if (sel) "► " else "  ").append(options[i])
             when (i) {

@@ -5,8 +5,8 @@ active: false
 lowMin: 3000.0
 lowMax: 3000.0
 - Count -
-min: 0
-max: 20
+minParticleCount: 0
+maxParticleCount: 20
 - Emission -
 lowMin: 0.0
 lowMax: 0.0
@@ -38,7 +38,7 @@ active: false
 - Y Offset -
 active: false
 - Spawn Shape -
-shape: rectangle
+shape: square
 - Spawn Width -
 lowMin: 0.0
 lowMax: 0.0
@@ -100,7 +100,7 @@ active: false
 - Gravity -
 active: false
 - Tint -
-colorsCount: 3
+colorsCount: 9
 colors0: 1.0
 colors1: 1.0
 colors2: 0.0
@@ -115,7 +115,6 @@ timeline0: 0.0
 timeline1: 0.5
 timeline2: 1.0
 - Transparency -
-active: true
 lowMin: 0.0
 lowMax: 0.0
 highMin: 1.0
@@ -135,6 +134,4 @@ continuous: true
 aligned: false
 additive: true
 behind: false
-premultipliedAlpha: false
-- Image Paths -
-../sprites/cursor.png
+cursor.png

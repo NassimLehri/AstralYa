@@ -1,3 +1,6 @@
-- [ ] Reformat `fireflies.p` to match LibGDX 1.12.1 format
-- [ ] Reformat `rain.p` to match LibGDX 1.12.1 format
-- [ ] Verify fix by reviewing the changes
+- [x] Update `UIScreens.kt` with unified framing and pulsing animations
+- [x] Enhance `SaveScreen` slots with Map/Gold/Playtime details
+- [x] Implement graphical HP/MP bars in `PartyScreen`
+- [x] Add scrolling logic to `InventoryScreen`
+- [x] Improve error handling and null safety in `SaveScreen`
+- [x] Update `walkthrough_visual_polish_v2.artifact.md` with the new changes

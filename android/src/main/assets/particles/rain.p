@@ -5,8 +5,8 @@ active: false
 lowMin: 1000.0
 lowMax: 1000.0
 - Count -
-min: 0
-max: 200
+minParticleCount: 0
+maxParticleCount: 200
 - Emission -
 lowMin: 0.0
 lowMax: 0.0
@@ -34,7 +34,7 @@ active: false
 - Y Offset -
 active: false
 - Spawn Shape -
-shape: rectangle
+shape: square
 - Spawn Width -
 lowMin: 0.0
 lowMax: 0.0
@@ -94,14 +94,13 @@ active: false
 - Gravity -
 active: false
 - Tint -
-colorsCount: 1
+colorsCount: 3
 colors0: 0.7
 colors1: 0.7
 colors2: 1.0
 timelineCount: 1
 timeline0: 0.0
 - Transparency -
-active: true
 lowMin: 0.0
 lowMax: 0.0
 highMin: 0.6
@@ -119,6 +118,4 @@ continuous: true
 aligned: false
 additive: false
 behind: false
-premultipliedAlpha: false
-- Image Paths -
 pixel.png
