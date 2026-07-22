@@ -5,8 +5,14 @@ import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.audio.Sound
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
+import com.badlogic.gdx.maps.tiled.TiledMap
+import com.badlogic.gdx.maps.tiled.TmxMapLoader
 
 class AssetLoader(private val manager: AssetManager) {
+
+    init {
+        manager.setLoader(TiledMap::class.java, TmxMapLoader())
+    }
 
     // ── Chargement des assets ─────────────────────────────────────────────────
 
@@ -62,6 +68,15 @@ class AssetLoader(private val manager: AssetManager) {
         manager.load("audio/sfx_menu_cancel.ogg", Sound::class.java)
         manager.load("audio/sfx_portal.ogg", Sound::class.java)
         manager.load("audio/sfx_boss_appear.ogg", Sound::class.java)
+
+        // Maps Tiled
+        manager.load("maps/village.tmx", TiledMap::class.java)
+        manager.load("maps/foret.tmx", TiledMap::class.java)
+        manager.load("maps/grotte.tmx", TiledMap::class.java)
+        manager.load("maps/desert.tmx", TiledMap::class.java)
+        manager.load("maps/temple.tmx", TiledMap::class.java)
+        manager.load("maps/cite_volante.tmx", TiledMap::class.java)
+        manager.load("maps/chateau.tmx", TiledMap::class.java)
     }
 
     fun update(): Boolean = manager.update()
@@ -98,6 +113,13 @@ class AssetLoader(private val manager: AssetManager) {
         throw e
     }
 
+    fun getTiledMap(path: String): TiledMap = try {
+        manager.get(path, TiledMap::class.java)
+    } catch (e: Exception) {
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Map Tiled non trouvée: $path")
+        throw e
+    }
+
     fun getBattleBackground(mapId: String): Texture {
         val path = when (mapId) {
             "foret_enchantee" -> "sprites/battle_bg_foret.png"
@@ -107,6 +129,17 @@ class AssetLoader(private val manager: AssetManager) {
             "cite_volante"    -> "sprites/battle_bg_cite.png"
             "chateau_morvax"  -> "sprites/battle_bg_chateau.png"
             else              -> "sprites/battle_bg_village.png"
+        }
+        return getTexture(path)
+    }
+
+    fun getEnemyTexture(enemyId: String): Texture {
+        val path = when {
+            enemyId.contains("slime") -> "sprites/enemy_slime.png"
+            enemyId.contains("loup")  -> "sprites/enemy_loup.png"
+            enemyId.contains("golem") -> "sprites/enemy_golem.png"
+            enemyId == "morvax"       -> "sprites/boss_morvax.png"
+            else                      -> "sprites/enemy_slime.png" // Fallback
         }
         return getTexture(path)
     }

@@ -22,7 +22,19 @@ class GameRandom(seed: Long = System.currentTimeMillis()) {
     }
 
     /** Int dans [range.first, range.last] */
-    fun nextInt(range: IntRange): Int = nextInt(range.first, range.last + 1)
+    fun nextInt(range: IntRange): Int {
+        val first = range.first
+        val last = range.last
+        require(last >= first) { "range.last ($last) doit être >= range.first ($first)" }
+
+        val bound = last.toLong() - first.toLong() + 1
+        return if (bound > 0 && bound <= Int.MAX_VALUE) {
+            first + rng.nextInt(bound.toInt())
+        } else {
+            // Cas où bound > Int.MAX_VALUE (ex: Int.MIN_VALUE..Int.MAX_VALUE)
+            (first + (rng.nextDouble() * bound).toLong()).toInt()
+        }
+    }
 
     /** Bool avec probabilité p ∈ [0,1] */
     fun nextBool(probability: Float): Boolean = rng.nextFloat() < probability
@@ -37,11 +49,4 @@ class GameRandom(seed: Long = System.currentTimeMillis()) {
         return list[nextInt(0, list.size)]
     }
 
-    /** Shuffle in-place Fisher-Yates */
-    fun <T> shuffle(list: MutableList<T>) {
-        for (i in list.size - 1 downTo 1) {
-            val j = nextInt(0, i + 1)
-            val tmp = list[i]; list[i] = list[j]; list[j] = tmp
-        }
-    }
 }

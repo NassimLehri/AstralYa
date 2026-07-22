@@ -5,7 +5,8 @@ Produit tous les PNG nécessaires au projet LibGDX
 from PIL import Image, ImageDraw
 import os
 
-OUT = "/home/claude/assets_output/sprites"
+# On utilise un chemin relatif par rapport au dossier du projet
+OUT = "android/src/main/assets/sprites"
 os.makedirs(OUT, exist_ok=True)
 
 # ── Palette de couleurs ────────────────────────────────────────
@@ -479,21 +480,24 @@ def draw_effects():
 
 print("🎨 Génération des sprites...")
 
-# Héros
+# Héros - On les centre dans du 64x64 pour la compatibilité avec ExplorationScreen
+def to_square(img, size=64):
+    square = new_img(size, size)
+    # On centre le sprite (32x48) horizontalement, et on le pose sur le bas (ou centre)
+    square.paste(img, ((size - img.width) // 2, (size - img.height) // 2))
+    return square
+
 nassim = draw_nassim()
-nassim_big = nassim.resize((64, 96), Image.NEAREST)
-nassim_big.save(f"{OUT}/nassim.png")
-print("  ✅ nassim.png")
+to_square(nassim.resize((32, 48), Image.NEAREST)).save(f"{OUT}/nassim.png")
+print("  ✅ nassim.png (64x64)")
 
 yasmine = draw_yasmine()
-yasmine_big = yasmine.resize((64, 96), Image.NEAREST)
-yasmine_big.save(f"{OUT}/yasmine.png")
-print("  ✅ yasmine.png")
+to_square(yasmine.resize((32, 48), Image.NEAREST)).save(f"{OUT}/yasmine.png")
+print("  ✅ yasmine.png (64x64)")
 
 lwiz = draw_lwiz()
-lwiz_big = lwiz.resize((64, 96), Image.NEAREST)
-lwiz_big.save(f"{OUT}/lwiz.png")
-print("  ✅ lwiz.png")
+to_square(lwiz.resize((32, 48), Image.NEAREST)).save(f"{OUT}/lwiz.png")
+print("  ✅ lwiz.png (64x64)")
 
 # Ennemis
 slime = draw_slime()

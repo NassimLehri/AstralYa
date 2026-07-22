@@ -2,6 +2,7 @@ package com.astralya
 
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.assets.AssetManager
@@ -52,6 +53,7 @@ class AstralYaGame(
         viewport.apply(true)
 
         Gdx.graphics.isContinuousRendering = true
+        Gdx.input.setCatchKey(Input.Keys.BACK, true)
         assetLoader.loadAll()
         setScreen(LoadingScreen(this))
     }

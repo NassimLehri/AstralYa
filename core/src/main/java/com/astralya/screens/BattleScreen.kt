@@ -6,6 +6,7 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.graphics.glutils.ShaderProgram
 import com.badlogic.gdx.math.MathUtils
 import com.astralya.AstralYaGame
 import com.astralya.combat.*
@@ -67,7 +68,6 @@ class BattleScreen(
     // FIX PERF #2 — couleurs constantes
     companion object {
         private val C_BG1       = Color(0.08f, 0.04f, 0.16f, 1f)
-        private val C_BG2       = Color(0.11f, 0.05f, 0.22f, 1f)
         private val C_PANEL_L   = Color(0.05f, 0.05f, 0.18f, 0.92f)
         private val C_PANEL_R   = Color(0.05f, 0.08f, 0.20f, 0.92f)
         private val C_ACTIVE_HL = Color(0.18f, 0.18f, 0.48f, 0.88f)
@@ -86,9 +86,6 @@ class BattleScreen(
         private val C_TXT_ENE   = Color(1f,    0.85f, 0.5f,  1f)
         private val C_TXT_UNS   = Color(0.68f, 0.68f, 0.78f, 1f)
         private val C_ENEMY_RED = Color(1f,    0.38f, 0.38f, 1f)
-        private val C_NASSIM    = Color(0.2f,  0.5f,  0.9f,  1f)
-        private val C_YASMINE   = Color(0.9f,  0.7f,  0.2f,  1f)
-        private val C_LWIZ      = Color(0.55f, 0.2f,  0.9f,  1f)
         private val C_LEVELUP   = Color(1f,    0.9f,  0.1f,  1f)
     }
 
@@ -99,6 +96,10 @@ class BattleScreen(
     // Couleur temporaire réutilisée pour HP ennemis
     private val tmpColor = Color()
 
+    // Modern Visuals
+    private var postProcessShader: ShaderProgram? = null
+    private val ambientColor = Color(1f, 1f, 1f, 1f)
+
     private fun addLog(msg: String) {
         if (battleLog.size >= 6) battleLog.removeFirst()
         battleLog.addLast(msg)
@@ -106,9 +107,30 @@ class BattleScreen(
 
     override fun show() {
         if (!isValid) { returnToExploration(); return }
+        loadShaders()
+        applyAmbientColor()
         runCatching { game.audioManager.playMusic(game.assetLoader.getMusic("audio/music_battle.ogg")) }
         addLog("⚔️ Combat !")
         enemies.forEach { addLog("${it.name} apparaît !") }
+    }
+
+    private fun loadShaders() {
+        val vert = Gdx.files.internal("shaders/default.vert")
+        val frag = Gdx.files.internal("shaders/post_process.frag")
+        postProcessShader = ShaderProgram(vert, frag)
+        if (!postProcessShader!!.isCompiled) {
+            Gdx.app.error("AstralYa", "战斗着色器加载失败: ${postProcessShader!!.log}")
+            postProcessShader = null
+        }
+    }
+
+    private fun applyAmbientColor() {
+        when (mapId) {
+            "grotte_cristal"  -> ambientColor.set(0.6f, 0.7f, 1.0f, 1f)
+            "desert_oublie"   -> ambientColor.set(1.1f, 0.9f, 0.7f, 1f)
+            "chateau_morvax"  -> ambientColor.set(0.7f, 0.5f, 0.8f, 1f)
+            else              -> ambientColor.set(1.0f, 1.0f, 1.0f, 1f)
+        }
     }
 
     override fun render(delta: Float) {
@@ -333,15 +355,25 @@ class BattleScreen(
 
         game.batch.projectionMatrix = game.viewport.camera.combined
         game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
+        
+        // Appliquer l'ambiance au rendu du monde (fonds)
+        game.batch.color = ambientColor
 
         val shape = game.shapeRenderer
 
         // ── Passe shape (Filled) ──────────────────────────────────────────────
         shape.begin(ShapeRenderer.ShapeType.Filled)
 
+        // Fond par défaut si texture absente
         shape.color = C_BG1; shape.rect(0f, 0f, W, H)
-        shape.color = C_BG2; shape.rect(0f, H * 0.38f, W, H * 0.52f)
+        shape.end()
 
+        // Background Image
+        game.batch.begin()
+        game.batch.draw(game.assetLoader.getBattleBackground(mapId), 0f, H * 0.35f, W, H * 0.65f)
+        game.batch.end()
+
+        shape.begin(ShapeRenderer.ShapeType.Filled)
         // FIX PERF #4 — for classique
         for (i in aliveEnemies.indices) {
             val enemy = aliveEnemies[i]
@@ -349,8 +381,8 @@ class BattleScreen(
             val ey    = H * 0.65f
             val size  = if (enemy.isBoss) 88f else 52f
 
-            enemyColor(enemy, tmpColor); shape.color = tmpColor
-            shape.rect(ex - size / 2f, ey - size / 2f, size, size)
+            // On ne dessine plus le rectangle de couleur ici, on le fera avec une texture dans le batch
+            // Sauf pour le curseur et la barre de vie
 
             if (enemy.isBoss) { shape.color = C_GOLD; shape.triangle(ex-22f, ey+size/2f, ex, ey+size/2f+22f, ex+22f, ey+size/2f) }
 
@@ -383,34 +415,48 @@ class BattleScreen(
             shape.color = tmpColor; shape.rect(bx+48f, by+10f, 118f*hpR, 10f)
             shape.color = C_MP_BG;  shape.rect(bx+48f, by-4f, 118f, 8f)
             shape.color = C_MP_FG;  shape.rect(bx+48f, by-4f, 118f*mpR, 8f)
-            heroColor(hero.id, tmpColor)
-            shape.color = if (hero.isAlive) tmpColor else C_GRAY
-            shape.rect(bx, by-26f, 38f, 48f)
         }
 
         shape.color = C_LOG_BG
         shape.rect(W * 0.57f, H * 0.35f, W * 0.43f - 4f, H * 0.22f)
         shape.end()
 
-        // ── Passe batch (texte) ───────────────────────────────────────────────
+        // UI & Post-Processing
+        game.batch.color = Color.WHITE
+        val oldShader = game.batch.shader
+        if (postProcessShader != null) game.batch.shader = postProcessShader
+
+        // ── Passe batch (images et texte) ─────────────────────────────────────
         game.batch.begin()
         game.batch.setColor(C_WHITE)
 
-        // FIX PERF #4 #3 — for + StringBuilder
+        // Ennemis
         for (i in aliveEnemies.indices) {
             val enemy = aliveEnemies[i]
             val ex = W * 0.20f + i * (W / (aliveEnemies.size + 1).coerceAtLeast(1))
-            val ey = H * 0.65f; val sz = if (enemy.isBoss) 88f else 52f
+            val ey = H * 0.65f
+            val size = if (enemy.isBoss) 120f else 64f
+            
+            game.batch.draw(game.assetLoader.getEnemyTexture(enemy.id), ex - size/2f, ey - size/2f, size, size)
+            
             game.fonts.small.setColor(C_TXT_ENE)
-            game.fonts.small.draw(game.batch, enemy.name, ex - 48f, ey - sz/2f - 6f)
+            game.fonts.small.draw(game.batch, enemy.name, ex - 48f, ey - size/2f - 6f)
             game.fonts.tiny.setColor(C_WHITE)
             sb.clear(); sb.append(enemy.currentHp).append('/').append(enemy.maxHp)
-            game.fonts.tiny.draw(game.batch, sb, ex - 28f, ey - sz/2f - 20f)
+            game.fonts.tiny.draw(game.batch, sb, ex - 28f, ey - size/2f - 20f)
         }
 
+        // Héros
         for (i in party.indices) {
             val hero = party[i]
             val bx = 20f; val by = H * 0.31f - i * 80f
+            
+            // Texture du héros
+            game.batch.setColor(if (hero.isAlive) Color.WHITE else Color.GRAY)
+            val heroTex = game.assetLoader.getTexture("sprites/${hero.id.name.lowercase()}.png")
+            game.batch.draw(heroTex, bx, by - 26f, 38f, 48f)
+            game.batch.setColor(Color.WHITE)
+
             game.fonts.normal.setColor(if (hero.isAlive) C_WHITE else C_GRAY)
             game.fonts.normal.draw(game.batch, hero.name, bx+48f, by+28f)
             game.fonts.tiny.setColor(C_TXT_HP)
@@ -490,25 +536,9 @@ class BattleScreen(
         game.batch.setColor(C_WHITE)
         game.batch.end()
         game.fonts.resetColors()
+        game.batch.shader = oldShader
     }
 
-    private fun enemyColor(e: Enemy, out: Color) {
-        when (e.element) {
-            Element.DARK    -> out.set(0.28f, 0f,    0.38f, 1f)
-            Element.STELLAR -> out.set(0.18f, 0.28f, 0.68f, 1f)
-            Element.LIGHT   -> out.set(0.78f, 0.78f, 0.28f, 1f)
-            Element.COSMIC  -> out.set(0.1f,  0.48f, 0.68f, 1f)
-            Element.NEUTRAL -> out.set(0.38f, 0.33f, 0.33f, 1f)
-        }
-    }
-
-    private fun heroColor(id: HeroId, out: Color) {
-        when (id) {
-            HeroId.NASSIM  -> out.set(C_NASSIM)
-            HeroId.YASMINE -> out.set(C_YASMINE)
-            HeroId.LWIZ    -> out.set(C_LWIZ)
-        }
-    }
 
     override fun resize(w: Int, h: Int) {
         game.viewport.update(w, h, true)
@@ -516,6 +546,8 @@ class BattleScreen(
     override fun pause()  {}
     override fun resume() {}
     override fun hide()   {}
-    override fun dispose() {}
+    override fun dispose() {
+        postProcessShader?.dispose()
+    }
 }
 

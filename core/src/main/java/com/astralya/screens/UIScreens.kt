@@ -71,7 +71,8 @@ class InventoryScreen(
 
     private fun handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
-            Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+            Gdx.input.isKeyJustPressed(Input.Keys.X) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(returnScreen); dispose(); return
         }
         
@@ -258,7 +259,8 @@ class PartyScreen(
 
     override fun render(delta: Float) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ||
-            Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+            Gdx.input.isKeyJustPressed(Input.Keys.X) ||
+            Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(returnScreen); dispose(); return
         }
         
@@ -413,7 +415,7 @@ class SaveScreen(
 
     private fun handleInput() {
         if (saving) return
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(returnScreen ?: MainMenuScreen(game)); dispose(); return
         }
         
@@ -423,8 +425,8 @@ class SaveScreen(
             game.viewport.unproject(touchPos)
             val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
             
-            // Back button
-            if (touchPos.x > W - 150f && touchPos.y < 50f) {
+            // Back button (Visible area at the bottom right)
+            if (touchPos.x > W - 180f && touchPos.y < 60f) {
                 game.setScreen(returnScreen ?: MainMenuScreen(game)); dispose(); return
             }
             
@@ -432,11 +434,8 @@ class SaveScreen(
             for (i in 0 until SLOTS) {
                 val slotY = H - 118f - i * 68f
                 if (touchPos.y < slotY && touchPos.y > slotY - 50f) {
-                    if (selSlot == i) {
-                        if (mode == Mode.SAVE) doSave() else doLoad()
-                    } else {
-                        selSlot = i
-                    }
+                    selSlot = i
+                    if (mode == Mode.SAVE) doSave() else doLoad()
                     break
                 }
             }
@@ -551,6 +550,9 @@ class SaveScreen(
         game.fonts.tiny.setColor(C_HINT)
         game.fonts.tiny.draw(game.batch, "↑↓ Sélectionner  |  ENTRÉE Confirmer  |  ESC Retour", 24f, 14f)
 
+        game.fonts.medium.setColor(Color.WHITE)
+        game.fonts.medium.draw(game.batch, "[ RETOUR ]", W - 180f, 45f)
+
         game.batch.setColor(C_WHITE)
         game.batch.end()
         game.fonts.resetColors()
@@ -585,7 +587,7 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
     override fun show() {}
 
     override fun render(delta: Float) {
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
             game.setScreen(MainMenuScreen(game)); dispose(); return
         }
         
@@ -598,19 +600,16 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
             for (i in options.indices) {
                 val optY = H - 100f - i * 58f
                 if (touchPos.y < optY && touchPos.y > optY - 45f) {
-                    if (selIdx == i) {
-                        if (i == 4) { game.setScreen(MainMenuScreen(game)); dispose(); return }
-                        else if (i == 2) game.audioManager.isMusicEnabled = !game.audioManager.isMusicEnabled
-                        else if (i == 3) game.audioManager.isSfxEnabled = !game.audioManager.isSfxEnabled
-                        else if (touchPos.x > W / 2f) { // Simple right side touch to increase
-                            if (i == 0) game.audioManager.musicVolume += 0.1f
-                            else if (i == 1) game.audioManager.sfxVolume += 0.1f
-                        } else { // Left side touch to decrease
-                            if (i == 0) game.audioManager.musicVolume -= 0.1f
-                            else if (i == 1) game.audioManager.sfxVolume -= 0.1f
-                        }
-                    } else {
-                        selIdx = i
+                    selIdx = i
+                    if (i == 4) { game.setScreen(MainMenuScreen(game)); dispose(); return }
+                    else if (i == 2) game.audioManager.isMusicEnabled = !game.audioManager.isMusicEnabled
+                    else if (i == 3) game.audioManager.isSfxEnabled = !game.audioManager.isSfxEnabled
+                    else if (touchPos.x > W / 2f) { // Simple right side touch to increase
+                        if (i == 0) game.audioManager.musicVolume += 0.1f
+                        else if (i == 1) game.audioManager.sfxVolume += 0.1f
+                    } else { // Left side touch to decrease
+                        if (i == 0) game.audioManager.musicVolume -= 0.1f
+                        else if (i == 1) game.audioManager.sfxVolume -= 0.1f
                     }
                     break
                 }
@@ -668,6 +667,9 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
         
         game.fonts.tiny.setColor(C_UNSEL)
         game.fonts.tiny.draw(game.batch, "Appuyez pour sélectionner, re-appuyez pour changer", 24f, 14f)
+
+        game.fonts.medium.setColor(Color.WHITE)
+        game.fonts.medium.draw(game.batch, "[ RETOUR ]", W - 180f, 45f)
 
         game.batch.setColor(C_WHITE)
         game.batch.end()

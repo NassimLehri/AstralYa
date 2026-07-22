@@ -2,30 +2,49 @@ package com.astralya.utils
 
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator
+import com.badlogic.gdx.Gdx
 
 /**
- * FIX PERF #8 / REVIEW font.setScale() — Fonts dédiées par taille.
- *
- * Problème : font.data.setScale() modifie l'état global du BitmapFont.
- * Si draw() lève une exception entre setScale(X) et setScale(1f),
- * la taille reste bloquée pour toutes les frames suivantes.
- *
- * Solution : une instance BitmapFont par taille utilisée dans le jeu.
- * setScale() n'est plus jamais appelé dans render().
- *
- * Note : on utilise BitmapFont(FileHandle) avec la police par défaut
- * LibGDX (Arial 15px embarquée). Pour une vraie police pixel art,
- * remplacer par FreeTypeFontGenerator dans AssetLoader.
+ * FontManager MODERNISÉ — Utilise FreeType pour générer des polices nettes à toutes les tailles.
  */
 class FontManager {
 
-    // Toutes les tailles utilisées dans le projet
-    val tiny:   BitmapFont = BitmapFont().apply { data.setScale(0.62f) }
-    val small:  BitmapFont = BitmapFont().apply { data.setScale(0.75f) }
-    val normal: BitmapFont = BitmapFont().apply { data.setScale(0.90f) }
-    val medium: BitmapFont = BitmapFont().apply { data.setScale(1.05f) }
-    val large:  BitmapFont = BitmapFont().apply { data.setScale(1.35f) }
-    val title:  BitmapFont = BitmapFont().apply { data.setScale(2.20f) }
+    val tiny:   BitmapFont
+    val small:  BitmapFont
+    val normal: BitmapFont
+    val medium: BitmapFont
+    val large:  BitmapFont
+    val title:  BitmapFont
+
+    init {
+        // Chemin vers la police TTF. Si absente, on utilise la police par défaut de LibGDX (fallback).
+        val fontFile = Gdx.files.internal("fonts/main.ttf")
+        
+        if (fontFile.exists()) {
+            val generator = FreeTypeFontGenerator(fontFile)
+            val parameter = FreeTypeFontGenerator.FreeTypeFontParameter()
+            
+            parameter.size = 12; tiny = generator.generateFont(parameter)
+            parameter.size = 16; small = generator.generateFont(parameter)
+            parameter.size = 20; normal = generator.generateFont(parameter)
+            parameter.size = 26; medium = generator.generateFont(parameter)
+            parameter.size = 36; large = generator.generateFont(parameter)
+            parameter.size = 54; title = generator.generateFont(parameter)
+            
+            generator.dispose()
+        } else {
+            // Fallback sur BitmapFont par défaut (Arial 15px) avec mise à l'échelle (moins net)
+            tiny   = BitmapFont().apply { data.setScale(0.62f) }
+            small  = BitmapFont().apply { data.setScale(0.75f) }
+            normal = BitmapFont().apply { data.setScale(0.90f) }
+            medium = BitmapFont().apply { data.setScale(1.05f) }
+            large  = BitmapFont().apply { data.setScale(1.35f) }
+            title  = BitmapFont().apply { data.setScale(2.20f) }
+            
+            Gdx.app.log("AstralYa", "ATTENTION: fonts/main.ttf non trouvée. Utilisation du fallback BitmapFont.")
+        }
+    }
 
     /** Remet toutes les couleurs à blanc (à appeler en fin de draw()) */
     fun resetColors() {

@@ -12,6 +12,10 @@ import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.MathUtils
+import com.badlogic.gdx.graphics.OrthographicCamera
+import com.badlogic.gdx.graphics.glutils.ShaderProgram
+import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 import com.astralya.AstralYaGame
 import com.astralya.data.GameState
 import com.astralya.entities.EnemyFactory
@@ -19,6 +23,13 @@ import com.astralya.entities.ItemFactory
 import com.astralya.map.MapRegistry
 import com.astralya.map.GameMap
 import com.astralya.map.NPC
+import com.astralya.map.Chest
+import com.astralya.map.Portal
+import com.astralya.map.Position
+import com.astralya.utils.AnimationComponent
+import com.astralya.utils.Direction
+import com.astralya.utils.TimeSystem
+import com.astralya.utils.ParticleManager
 
 /**
  * ExplorationScreen "BEAU" et STABLE :
@@ -43,8 +54,28 @@ class ExplorationScreen(
     private var currentMap: GameMap = MapRegistry.getMap(state.currentMapId) ?: MapRegistry.VILLAGE_DEPART
 
     private var pixelRegion: TextureRegion? = null
-    private var groundRegion: TextureRegion? = null
     private var heroTexture: Texture? = null
+    private var mapRenderer: OrthogonalTiledMapRenderer? = null
+    private var collisionLayer: TiledMapTileLayer? = null
+    
+    // Modern Visuals
+    private var postProcessShader: ShaderProgram? = null
+    private var ambientColor = Color(1f, 1f, 1f, 1f)
+    private val mapBaseTint = Color(1f, 1f, 1f, 1f)
+    
+    // Time & Particles
+    private val timeSystem = TimeSystem()
+    private val particleManager = ParticleManager()
+
+    // Animations
+    private var animation: AnimationComponent? = null
+    private var stateTime = 0f
+    private var playerDirection = Direction.DOWN
+
+    // Tiled Objects
+    private val tiledNpcs = mutableListOf<NPC>()
+    private val tiledChests = mutableListOf<Chest>()
+    private val tiledPortals = mutableListOf<Portal>()
 
     // Joystick
     private val joystickBase   = Vector2(140f, 140f)
@@ -81,7 +112,7 @@ class ExplorationScreen(
 
     private var showMenu  = false
     private var menuIndex = 0
-    private val menuItems = listOf("Inventaire", "Équipe", "Sauvegarder", "Retour")
+    private val menuItems = listOf("Inventaire", "Équipe", "Quêtes", "Sauvegarder", "Retour")
 
     override fun show() {
         val pixmap = com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888)
@@ -90,26 +121,112 @@ class ExplorationScreen(
         pixelRegion = TextureRegion(Texture(pixmap))
         pixmap.dispose()
 
-        updateGroundTexture()
+        loadMap()
+        loadShaders()
+        loadParticles()
         heroTexture = try { game.assetLoader.getTexture("sprites/nassim.png") } catch(e: Exception) { null }
+        heroTexture?.let { animation = AnimationComponent(it) }
         playZoneMusic()
     }
 
-    private fun updateGroundTexture() {
-        val texName = when (currentMap.id) {
-            "village_depart"  -> "sprites/battle_bg_village.png"
-            "foret_enchantee" -> "sprites/battle_bg_foret.png"
-            "grotte_cristal"  -> "sprites/battle_bg_grotte.png"
-            "desert_oublie"   -> "sprites/battle_bg_desert.png"
-            "temple_etoiles"  -> "sprites/battle_bg_temple.png"
-            "cite_volante"    -> "sprites/battle_bg_cite.png"
-            "chateau_morvax"  -> "sprites/battle_bg_chateau.png"
-            else              -> "sprites/title_bg.png"
+    private fun loadMap() {
+        mapRenderer?.dispose()
+        tiledNpcs.clear()
+        tiledChests.clear()
+        tiledPortals.clear()
+        particleManager.clear()
+
+        // Update Ambient Light base tint based on map ID
+        when (currentMap.id) {
+            "grotte_cristal"  -> mapBaseTint.set(0.6f, 0.7f, 1.0f, 1f)
+            "desert_oublie"   -> mapBaseTint.set(1.1f, 0.9f, 0.7f, 1f)
+            "chateau_morvax"  -> mapBaseTint.set(0.7f, 0.5f, 0.8f, 1f)
+            "temple_etoiles"  -> mapBaseTint.set(0.9f, 0.9f, 1.1f, 1f)
+            else              -> mapBaseTint.set(1.0f, 1.0f, 1.0f, 1f)
         }
-        val tex = try { game.assetLoader.getTexture(texName) } catch (e: Exception) { null }
-        if (tex != null) {
-            groundRegion = TextureRegion(tex)
+        
+        // Spawn fireflies in forest
+        if (currentMap.id == "foret_enchantee") {
+            particleManager.spawn("fireflies", 400f, 300f)
         }
+
+        val tiledMap = try {
+            game.assetLoader.getTiledMap(currentMap.tilemapFile)
+        } catch (e: Exception) {
+            null
+        }
+
+        if (tiledMap != null) {
+            mapRenderer = OrthogonalTiledMapRenderer(tiledMap, game.batch)
+            collisionLayer = tiledMap.layers.get("Collisions") as? TiledMapTileLayer
+            
+            // Parse NPCs
+            tiledMap.layers.get("NPCs")?.objects?.forEach { obj ->
+                val x = obj.properties.get("x", Float::class.java) ?: 0f
+                val y = obj.properties.get("y", Float::class.java) ?: 0f
+                val name = obj.name ?: "Inconnu"
+                val dialogues = mutableListOf<String>()
+                for (i in 1..5) {
+                    obj.properties.get("dialogue$i", String::class.java)?.let { dialogues.add(it) }
+                }
+                val questId = obj.properties.get("questId", String::class.java)
+                tiledNpcs.add(NPC(obj.name ?: "npc_${obj.hashCode()}", name, Position(x, y), dialogues, questId))
+            }
+
+            // Parse Chests
+            tiledMap.layers.get("Chests")?.objects?.forEach { obj ->
+                val x = obj.properties.get("x", Float::class.java) ?: 0f
+                val y = obj.properties.get("y", Float::class.java) ?: 0f
+                val itemId = obj.properties.get("itemId", String::class.java) ?: "herbe_soin"
+                val quantity = obj.properties.get("quantity", Int::class.java) ?: 1
+                tiledChests.add(Chest(obj.name ?: "chest_${obj.hashCode()}", Position(x, y), itemId, quantity))
+            }
+
+            // Parse Portals
+            tiledMap.layers.get("Portals")?.objects?.forEach { obj ->
+                val x = obj.properties.get("x", Float::class.java) ?: 0f
+                val y = obj.properties.get("y", Float::class.java) ?: 0f
+                val targetMapId = obj.properties.get("targetMapId", String::class.java) ?: "village_depart"
+                val targetX = obj.properties.get("targetX", Float::class.java) ?: 100f
+                val targetY = obj.properties.get("targetY", Float::class.java) ?: 100f
+                tiledPortals.add(Portal(obj.name ?: "portal_${obj.hashCode()}", Position(x, y), targetMapId, targetX, targetY))
+            }
+        } else {
+            collisionLayer = null
+        }
+    }
+
+    private fun isCollision(x: Float, y: Float): Boolean {
+        val layer = collisionLayer ?: return false
+        val cellX = (x / TILE_SIZE).toInt()
+        val cellY = (y / TILE_SIZE).toInt()
+        
+        if (cellX < 0 || cellY < 0 || cellX >= layer.width || cellY >= layer.height) return true
+        
+        return layer.getCell(cellX, cellY) != null
+    }
+
+    private fun canMoveTo(x: Float, y: Float): Boolean {
+        // On vérifie les 4 coins d'une boîte de collision réduite (16x16 centrée sur les pieds)
+        val r = 10f // Rayon de la boîte
+        return !isCollision(x - r, y - r) &&
+               !isCollision(x + r, y - r) &&
+               !isCollision(x - r, y + r) &&
+               !isCollision(x + r, y + r)
+    }
+
+    private fun loadShaders() {
+        val vert = Gdx.files.internal("shaders/default.vert")
+        val frag = Gdx.files.internal("shaders/post_process.frag")
+        postProcessShader = ShaderProgram(vert, frag)
+        if (!postProcessShader!!.isCompiled) {
+            Gdx.app.error("AstralYa", "ERREUR SHADER: ${postProcessShader!!.log}")
+            postProcessShader = null
+        }
+    }
+
+    private fun loadParticles() {
+        particleManager.loadEffect("fireflies", "particles/fireflies.p", "sprites")
     }
 
     override fun render(delta: Float) {
@@ -119,16 +236,27 @@ class ExplorationScreen(
 
     private fun update(delta: Float) {
         inputConsumed = false
+        timeSystem.update(delta)
+        ambientColor = timeSystem.getAmbientColor(mapBaseTint)
+        particleManager.update(delta)
+        
+        if (isMoving) stateTime += delta else stateTime = 0f
+
         if (dialogueActive) handleDialogueInput()
         else if (showMenu) handleMenuInput()
         else {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
+                showMenu = true
+                return
+            }
             handleMovement(delta)
             
             // Interaction tactile (bouton Action)
             if (Gdx.input.justTouched()) {
-                touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
-                game.viewport.unproject(touchVec)
-                if (actionButtonRect.contains(touchVec.x, touchVec.y)) {
+                val screenX = Gdx.input.x.toFloat() * (game.viewport.worldWidth / Gdx.graphics.width)
+                val screenY = (Gdx.graphics.height - Gdx.input.y.toFloat()) * (game.viewport.worldHeight / Gdx.graphics.height)
+                
+                if (actionButtonRect.contains(screenX, screenY)) {
                     if (!inputConsumed) checkNpcInteraction(force = true)
                     if (!inputConsumed) checkChests(force = true)
                 }
@@ -139,6 +267,17 @@ class ExplorationScreen(
             if (!inputConsumed) checkPortals()
             checkRandomEncounter(delta)
         }
+        
+        // Mise à jour de la caméra pour suivre le joueur avec limites
+        val cam = game.viewport.camera as OrthographicCamera
+        val mapW = currentMap.widthTiles * TILE_SIZE
+        val mapH = currentMap.heightTiles * TILE_SIZE
+        val halfW = game.viewport.worldWidth / 2f
+        val halfH = game.viewport.worldHeight / 2f
+        
+        cam.position.x = playerX.coerceIn(halfW, mapW - halfW)
+        cam.position.y = playerY.coerceIn(halfH, mapH - halfH)
+        cam.update()
     }
 
     private fun handleMovement(delta: Float) {
@@ -146,15 +285,16 @@ class ExplorationScreen(
         isMoving = false
         isTouchingJoy = false
 
-        // Joystick tactile (gauche de l'écran)
+        // Joystick tactile (gauche de l'écran) - Utilisation de coordonnées écran brutes pour l'UI
         if (Gdx.input.isTouched) {
-            touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
-            game.viewport.unproject(touchVec)
+            // On projette sur un plan 2D statique pour l'UI
+            val screenX = Gdx.input.x.toFloat() * (game.viewport.worldWidth / Gdx.graphics.width)
+            val screenY = (Gdx.graphics.height - Gdx.input.y.toFloat()) * (game.viewport.worldHeight / Gdx.graphics.height)
 
-            if (touchVec.x < 350f && touchVec.y < 350f) {
+            if (screenX < 350f && screenY < 350f) {
                 isTouchingJoy = true
-                val dist = joystickBase.dst(touchVec.x, touchVec.y)
-                val angle = MathUtils.atan2(touchVec.y - joystickBase.y, touchVec.x - joystickBase.x)
+                val dist = joystickBase.dst(screenX, screenY)
+                val angle = MathUtils.atan2(screenY - joystickBase.y, screenX - joystickBase.x)
                 val clampedDist = MathUtils.clamp(dist, 0f, joystickRadius)
                 
                 joystickKnob.set(joystickBase.x + MathUtils.cos(angle) * clampedDist, 
@@ -164,7 +304,7 @@ class ExplorationScreen(
                 dx = MathUtils.cos(angle) * SPEED * delta * power
                 dy = MathUtils.sin(angle) * SPEED * delta * power
                 if (power > 0.2f) isMoving = true
-            } else if (Gdx.input.justTouched() && touchVec.x > game.viewport.worldWidth - 150f && touchVec.y > game.viewport.worldHeight - 80f) {
+            } else if (Gdx.input.justTouched() && screenX > game.viewport.worldWidth - 150f && screenY > game.viewport.worldHeight - 80f) {
                 showMenu = true
             }
         } else {
@@ -172,21 +312,42 @@ class ExplorationScreen(
         }
 
         // Support Clavier
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT))  { dx = -SPEED * delta; isMoving = true }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) { dx =  SPEED * delta; isMoving = true }
-        if (Gdx.input.isKeyPressed(Input.Keys.UP))    { dy =  SPEED * delta; isMoving = true }
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  { dy = -SPEED * delta; isMoving = true }
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT))  { dx = -SPEED * delta; isMoving = true; playerDirection = Direction.LEFT }
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) { dx =  SPEED * delta; isMoving = true; playerDirection = Direction.RIGHT }
+        if (Gdx.input.isKeyPressed(Input.Keys.UP))    { dy =  SPEED * delta; isMoving = true; playerDirection = Direction.UP }
+        if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  { dy = -SPEED * delta; isMoving = true; playerDirection = Direction.DOWN }
+        
+        // Direction Joystick
+        if (isTouchingJoy && isMoving) {
+            if (dx * dx > dy * dy) {
+                playerDirection = if (dx > 0) Direction.RIGHT else Direction.LEFT
+            } else {
+                playerDirection = if (dy > 0) Direction.UP else Direction.DOWN
+            }
+        }
 
         val mapW = currentMap.widthTiles * TILE_SIZE
         val mapH = currentMap.heightTiles * TILE_SIZE
-        playerX = (playerX + dx).coerceIn(20f, mapW - 20f)
-        playerY = (playerY + dy).coerceIn(20f, mapH - 20f)
+        
+        // Test X
+        val nextX = (playerX + dx).coerceIn(20f, mapW - 20f)
+        if (canMoveTo(nextX, playerY)) {
+            playerX = nextX
+        }
+        
+        // Test Y
+        val nextY = (playerY + dy).coerceIn(20f, mapH - 20f)
+        if (canMoveTo(playerX, nextY)) {
+            playerY = nextY
+        }
+
         state.playerX = playerX; state.playerY = playerY
     }
 
     private fun checkPortals() {
         playerRect.set(playerX - 16f, playerY - 16f, 32f, 32f)
-        for (p in currentMap.portals) {
+        val portals = if (tiledPortals.isNotEmpty()) tiledPortals else currentMap.portals
+        for (p in portals) {
             otherRect.set(p.position.x - 24f, p.position.y - 24f, 48f, 48f)
             if (playerRect.overlaps(otherRect)) {
                 val nextMap = MapRegistry.getMap(p.targetMapId)
@@ -195,7 +356,7 @@ class ExplorationScreen(
                     state.currentMapId = nextMap.id
                     playerX = p.targetX; playerY = p.targetY
                     state.playerX = playerX; state.playerY = playerY
-                    updateGroundTexture()
+                    loadMap()
                     playZoneMusic()
                     return
                 }
@@ -206,7 +367,8 @@ class ExplorationScreen(
     private fun checkNpcInteraction(force: Boolean = false) {
         if (!force && !(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
         playerRect.set(playerX - 50f, playerY - 50f, 100f, 100f)
-        for (npc in currentMap.npcs) {
+        val npcs = if (tiledNpcs.isNotEmpty()) tiledNpcs else currentMap.npcs
+        for (npc in npcs) {
             otherRect.set(npc.position.x - 20f, npc.position.y - 20f, 40f, 40f)
             if (playerRect.overlaps(otherRect)) {
                 dialogueLines = npc.dialogues
@@ -221,7 +383,8 @@ class ExplorationScreen(
     private fun checkChests(force: Boolean = false) {
         if (!force && !(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER))) return
         playerRect.set(playerX - 40f, playerY - 40f, 80f, 80f)
-        for (chest in currentMap.chests) {
+        val chests = if (tiledChests.isNotEmpty()) tiledChests else currentMap.chests
+        for (chest in chests) {
             if (state.isChestOpened(chest.id)) continue
             otherRect.set(chest.position.x - 16f, chest.position.y - 16f, 32f, 32f)
             if (playerRect.overlaps(otherRect)) {
@@ -247,14 +410,14 @@ class ExplorationScreen(
         
         // Touch in menu
         if (Gdx.input.justTouched()) {
-            touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
-            game.viewport.unproject(touchVec)
+            val screenX = Gdx.input.x.toFloat() * (game.viewport.worldWidth / Gdx.graphics.width)
+            val screenY = (Gdx.graphics.height - Gdx.input.y.toFloat()) * (game.viewport.worldHeight / Gdx.graphics.height)
             val W = game.viewport.worldWidth; val H = game.viewport.worldHeight
             
             for (i in menuItems.indices) {
                 val menuX = W/2f - 100f
                 val menuY = H/2f + 100f - i * 50f
-                if (touchVec.x > menuX && touchVec.x < menuX + 200f && touchVec.y < menuY && touchVec.y > menuY - 40f) {
+                if (screenX > menuX && screenX < menuX + 200f && screenY < menuY && screenY > menuY - 40f) {
                     if (menuIndex == i) {
                         executeMenuAction()
                         return
@@ -275,8 +438,9 @@ class ExplorationScreen(
         when(menuIndex) {
             0 -> { showMenu=false; game.setScreen(InventoryScreen(game, state, this)) }
             1 -> { showMenu=false; game.setScreen(PartyScreen(game, state, this)) }
-            2 -> { showMenu=false; game.setScreen(SaveScreen(game, state, SaveScreen.Mode.SAVE, this)) }
-            3 -> showMenu = false
+            2 -> { showMenu=false; game.setScreen(QuestLogScreen(game, state, this)) }
+            3 -> { showMenu=false; game.setScreen(SaveScreen(game, state, SaveScreen.Mode.SAVE, this)) }
+            4 -> showMenu = false
         }
     }
 
@@ -301,80 +465,98 @@ class ExplorationScreen(
         Gdx.gl.glClearColor(0.05f, 0.05f, 0.1f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
+        // Rendu du monde avec Ambient Light
         game.batch.projectionMatrix = game.viewport.camera.combined
-        game.shapeRenderer.projectionMatrix = game.viewport.camera.combined
-
-        val camX = playerX - W / 2f; val camY = playerY - H / 2f
+        game.batch.color = ambientColor
+        
+        mapRenderer?.let {
+            it.setView(game.viewport.camera as OrthographicCamera)
+            it.render()
+        }
 
         game.batch.begin()
-        // Sol texturé
-        groundRegion?.let { reg ->
-            game.batch.setColor(0.6f, 0.6f, 0.6f, 1f)
-            val rows = (currentMap.heightTiles * TILE_SIZE / reg.regionHeight).toInt() + 1
-            val cols = (currentMap.widthTiles * TILE_SIZE / reg.regionWidth).toInt() + 1
-            for (r in 0 until rows) {
-                for (c in 0 until cols) {
-                    val wx = c * reg.regionWidth - camX
-                    val wy = r * reg.regionHeight - camY
-                    if (wx > W || wy > H || wx < -reg.regionWidth || wy < -reg.regionHeight) continue
-                    game.batch.draw(reg, wx, wy)
-                }
-            }
-        }
 
-        // Grille légère pour la structure
+        // Grille légère pour la structure (en coordonnées monde)
         game.batch.setColor(0f, 0f, 0f, 0.15f)
         for (tx in 0..currentMap.widthTiles) {
-            game.batch.draw(pixelRegion!!, tx * TILE_SIZE - camX, -camY, 1f, currentMap.heightTiles * TILE_SIZE)
+            game.batch.draw(pixelRegion!!, tx * TILE_SIZE, 0f, 1f, currentMap.heightTiles * TILE_SIZE)
         }
         for (ty in 0..currentMap.heightTiles) {
-            game.batch.draw(pixelRegion!!, -camX, ty * TILE_SIZE - camY, currentMap.widthTiles * TILE_SIZE, 1f)
+            game.batch.draw(pixelRegion!!, 0f, ty * TILE_SIZE, currentMap.widthTiles * TILE_SIZE, 1f)
         }
 
         // Portails
         game.batch.setColor(C_PORTAL)
-        for (p in currentMap.portals) {
-            game.batch.draw(pixelRegion!!, p.position.x - camX - 24f, p.position.y - camY - 24f, 48f, 48f)
+        val portals = if (tiledPortals.isNotEmpty()) tiledPortals else currentMap.portals
+        for (p in portals) {
+            game.batch.draw(pixelRegion!!, p.position.x - 24f, p.position.y - 24f, 48f, 48f)
         }
 
         // Coffres
-        for (c in currentMap.chests) {
+        val chests = if (tiledChests.isNotEmpty()) tiledChests else currentMap.chests
+        for (c in chests) {
             val opened = state.isChestOpened(c.id)
             game.batch.setColor(if (opened) Color.GRAY else Color.GOLD)
-            game.batch.draw(pixelRegion!!, c.position.x - camX - 12f, c.position.y - camY - 12f, 24f, 24f)
+            game.batch.draw(pixelRegion!!, c.position.x - 12f, c.position.y - 12f, 24f, 24f)
         }
 
         // PNJ
-        for (npc in currentMap.npcs) {
+        val npcs = if (tiledNpcs.isNotEmpty()) tiledNpcs else currentMap.npcs
+        for (npc in npcs) {
             game.batch.setColor(C_SHADOW)
-            game.batch.draw(pixelRegion!!, npc.position.x - camX - 12f, npc.position.y - camY - 18f, 24f, 8f)
+            game.batch.draw(pixelRegion!!, npc.position.x - 12f, npc.position.y - 18f, 24f, 8f)
             game.batch.setColor(Color.ORANGE)
-            game.batch.draw(pixelRegion!!, npc.position.x - camX - 12f, npc.position.y - camY - 12f, 24f, 32f)
+            game.batch.draw(pixelRegion!!, npc.position.x - 12f, npc.position.y - 12f, 24f, 32f)
             
             if (Vector2.dst(playerX, playerY, npc.position.x, npc.position.y) < 100f) {
                 game.fonts.small.setColor(Color.WHITE)
-                game.fonts.small.draw(game.batch, npc.name, npc.position.x - camX - 40f, npc.position.y - camY + 45f)
+                game.fonts.small.draw(game.batch, npc.name, npc.position.x - 40f, npc.position.y + 45f)
             }
         }
 
         // Joueur (Nassim)
-        game.batch.setColor(C_SHADOW)
-        game.batch.draw(pixelRegion!!, playerX - camX - 14f, playerY - camY - 18f, 28f, 10f)
+        game.batch.setColor(C_SHADOW.r * ambientColor.r, C_SHADOW.g * ambientColor.g, C_SHADOW.b * ambientColor.b, C_SHADOW.a)
+        game.batch.draw(pixelRegion!!, playerX - 14f, playerY - 18f, 28f, 10f)
         game.batch.setColor(Color.WHITE)
-        if (heroTexture != null) {
-            game.batch.draw(heroTexture, playerX - camX - 24f, playerY - camY - 24f, 48f, 48f)
-        } else {
-            game.batch.setColor(Color.CYAN)
-            game.batch.draw(pixelRegion!!, playerX - camX - 15f, playerY - camY - 15f, 30f, 30f)
+        
+        animation?.let {
+            val frame = it.getKeyFrame(stateTime, playerDirection, isMoving)
+            game.batch.draw(frame, playerX - 32f, playerY - 32f, 64f, 64f)
+        } ?: run {
+            if (heroTexture != null) {
+                game.batch.draw(heroTexture, playerX - 24f, playerY - 24f, 48f, 48f)
+            } else {
+                game.batch.setColor(Color.CYAN)
+                game.batch.draw(pixelRegion!!, playerX - 15f, playerY - 15f, 30f, 30f)
+            }
         }
+        
+        particleManager.draw(game.batch)
+        
+        game.batch.end()
 
+        // Rendu de l'UI (en coordonnées écran fixes)
+        val uiMatrix = game.batch.projectionMatrix.cpy().setToOrtho2D(0f, 0f, W, H)
+        game.batch.projectionMatrix = uiMatrix
+        game.shapeRenderer.projectionMatrix = uiMatrix
+        game.batch.color = Color.WHITE // Reset color for UI
+
+        // Apply Post-Process Shader if compiled
+        val oldShader = game.batch.shader
+        if (postProcessShader != null) {
+            game.batch.shader = postProcessShader
+        }
+        
+        game.batch.begin()
         // HUD Textuel
-        game.batch.setColor(Color.WHITE)
         game.fonts.large.setColor(C_GOLD)
         game.fonts.large.draw(game.batch, currentMap.name, 25f, H - 25f)
         game.fonts.normal.setColor(Color.WHITE)
         sb.setLength(0); sb.append("Or: ").append(state.gold)
         game.fonts.normal.draw(game.batch, sb, 25f, H - 65f)
+        
+        game.fonts.tiny.setColor(Color.WHITE)
+        game.fonts.tiny.draw(game.batch, timeSystem.getTimeString(), 25f, H - 95f)
         
         game.fonts.normal.draw(game.batch, "[ MENU ]", W - 150f, H - 25f)
 
@@ -396,7 +578,6 @@ class ExplorationScreen(
                 game.fonts.medium.draw(game.batch, menuItems[i], W/2f - 100f, H/2f + 100f - i * 50f)
             }
         }
-
         game.batch.end()
 
         // UI Shapes (Joystick & Action Button)
@@ -424,11 +605,17 @@ class ExplorationScreen(
         }
 
         game.fonts.resetColors()
+        game.batch.shader = oldShader // Restore original shader
     }
 
     override fun resize(w: Int, h: Int) { game.viewport.update(w, h, true) }
     override fun pause()  { state.playerX = playerX; state.playerY = playerY }
     override fun resume() {}
     override fun hide()   {}
-    override fun dispose() { pixelRegion?.texture?.dispose() }
+    override fun dispose() { 
+        pixelRegion?.texture?.dispose() 
+        mapRenderer?.dispose()
+        postProcessShader?.dispose()
+        particleManager.dispose()
+    }
 }

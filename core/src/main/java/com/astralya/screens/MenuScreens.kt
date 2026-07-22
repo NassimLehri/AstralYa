@@ -150,6 +150,7 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
             selectedIndex = (selectedIndex - 1 + menuItems.size) % menuItems.size
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
             Gdx.input.isKeyJustPressed(Input.Keys.Z)) onSelect()
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACK)) Gdx.app.exit()
 
         // GESTION DU TOUCHER
         if (Gdx.input.justTouched()) {
@@ -165,8 +166,8 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
                 // Bounding box approximative (300px large, 40px haut)
                 if (touchPos.x >= itemX && touchPos.x <= itemX + 300f &&
                     touchPos.y <= itemY && touchPos.y >= itemY - 40f) {
-                    if (selectedIndex == i) onSelect()
-                    else selectedIndex = i
+                    selectedIndex = i
+                    onSelect()
                     break
                 }
             }

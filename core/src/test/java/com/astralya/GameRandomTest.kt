@@ -68,6 +68,23 @@ class GameRandomTest {
         }
     }
 
+    @Test
+    fun `nextInt range avec MAX_VALUE`() {
+        val rng = GameRandom(seed = 42L)
+        // Vérifie qu'on ne crashe pas avec MAX_VALUE (overflow check)
+        val v = rng.nextInt(Int.MAX_VALUE - 10..Int.MAX_VALUE)
+        assertTrue("Valeur $v doit être >= MAX-10", v >= Int.MAX_VALUE - 10)
+        assertTrue("Valeur $v doit être <= MAX", v <= Int.MAX_VALUE)
+    }
+
+    @Test
+    fun `nextInt large range`() {
+        val rng = GameRandom(seed = 123L)
+        // Range plus grand que Int.MAX_VALUE
+        val v = rng.nextInt(Int.MIN_VALUE..Int.MAX_VALUE)
+        // Devrait juste fonctionner
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `nextInt until inferieur a from leve exception`() {
         GameRandom().nextInt(10, 5)

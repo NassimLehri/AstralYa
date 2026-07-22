@@ -1,0 +1,3 @@
+- [ ] Reformat `fireflies.p` to match LibGDX 1.12.1 format
+- [ ] Reformat `rain.p` to match LibGDX 1.12.1 format
+- [ ] Verify fix by reviewing the changes
