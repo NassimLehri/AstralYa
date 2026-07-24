@@ -5,8 +5,8 @@ active: false
 lowMin: 1000.0
 lowMax: 1000.0
 - Count -
-minParticleCount: 0
-maxParticleCount: 200
+min: 0
+max: 200
 - Emission -
 lowMin: 0.0
 lowMax: 0.0
@@ -118,4 +118,7 @@ continuous: true
 aligned: false
 additive: false
 behind: false
+premultipliedAlpha: false
+spriteMode: single
+- Image Paths -
 pixel.png

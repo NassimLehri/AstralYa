@@ -73,6 +73,13 @@ class GameState {
             val share = quest.rewardExp / party.size.coerceAtLeast(1)
             party.forEach { it.gainExp(share, rng) }
             if (quest.rewardItemId.isNotEmpty()) addItem(quest.rewardItemId)
+            if (quest.rewardSummonId.isNotEmpty()) {
+                val summon = HeroFactory.ALL_SUMMONS.find { it.id == quest.rewardSummonId }
+                if (summon != null) {
+                    // Unlock for all mages or support for now
+                    party.filter { it.role != HeroRole.TANK_DPS }.forEach { it.unlockedSummons.add(summon) }
+                }
+            }
             return true
         }
         return false

@@ -1,43 +1,43 @@
-# Implementation Plan - UI Optimization & System Robustness
+# Implementation Plan - Total Graphical Overhaul of Maps
 
-This plan focuses on improving the UI aesthetics across all menus and ensuring the game state and saving systems are robust against common mobile crashes.
+The goal is to replace the "repetitive grid" look with the high-quality assets already present in the project but currently ignored or unused.
 
 ## Proposed Changes
 
-### UI Components Polish
-Bring all sub-menus (Inventory, Party, Save, Options) to the same level of polish as the Main Menu and Exploration Screen.
+### [1. Engine Support for Full-Map Backgrounds]
 
-#### [MODIFY] [UIScreens.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/UIScreens.kt)
-- **Unified UI Framing**: Use the `ui_frame.png` asset to create a cohesive border around menu panels.
-- **Enhanced Save Slots**:
-    - Each slot will now display: **Map Name**, **Gold Count**, and **Playtime** (formatted as HH:MM).
-    - If a slot is empty, it will clearly state "Emplacement Vide".
-- **Dynamic Selection**:
-    - Selection cursors and highlighted items will have a "pulsing" animation using a sine wave.
-- **Party Screen Bars**:
-    - Replace text-based HP/MP with graphical bars for a more modern look.
-- **Scrolling Inventory**:
-    - Add logic to scroll the item list if it exceeds the visible area, ensuring all items are accessible even with a large inventory.
+#### [MODIFY] [ExplorationScreen.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/ExplorationScreen.kt)
+- Remove the logic that skips background images starting with `_`. This prefix was preventing `_map_village_bg.png` (the beautiful island village) from being displayed.
+- Ensure that when a `mapBgTexture` is drawn, it uses the map's full pixel dimensions (`widthTiles * TILE_SIZE`).
 
----
+### [2. Map Registry & Asset Linkage]
 
-### System Robustness & Crash Prevention
-Address potential edge cases in the data layer.
+#### [MODIFY] [MapSystem.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/map/MapSystem.kt)
+- Update `visualBg` for all maps:
+    - `VILLAGE_DEPART`: Use `sprites/_map_village_bg.png`.
+    - `FORET_ENCHANTEE`: Use `sprites/_map_foret_bg.png` (Note: If this is a tileset, we will paint the TMX instead).
+- Verify and update `Portal` and `NPC` positions to match the visuals of the new background images (especially for the island village).
 
-#### [MODIFY] [UIScreens.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/UIScreens.kt) (SaveScreen)
-- **Error Feedback**: Improve the error message handling when saving or loading fails (e.g., due to storage permissions or disk full).
-- **Graceful Null Handling**: Ensure that trying to load an empty or corrupted slot doesn't lead to a crash.
+### [3. TMX Painting (For maps without full backgrounds)]
 
-#### [MODIFY] [AssetLoader.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/utils/AssetLoader.kt)
-- **Safe Retrieval**: Ensure that asset lookups (especially music) don't crash if called before the manager is fully updated (though already mostly handled).
+#### [MODIFY] [foret.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/foret.tmx)
+- Replace the solid grid with a varied layout using `tileset_foret.png`.
+- Add clumps of trees using the `Trees` layer.
+
+#### [MODIFY] [desert.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/desert.tmx)
+- Use different dirt/sand tiles to create a natural terrain.
+- Add "Mountains" tiles (IDs 17-80) at the borders and as obstacles.
+
+#### [MODIFY] [grotte.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/grotte.tmx)
+- Redesign the layout to feel like a cave (winding paths, dead ends).
+- Use `lava.png` (Hazards layer) sparingly for visual interest.
 
 ## Verification Plan
 
-### Manual Verification
-- **Save/Load**: Create a save, then verify it appears with the correct Map Name and Gold count in the load menu.
-- **Inventory**: Fill the inventory to verify scrolling.
-- **Party Screen**: Check that HP/MP bars reflect the actual values accurately.
-- **Animation**: Verify the smooth pulsing effect on menu selections.
+### Automated Tests
+- Build and run the project: `./gradlew :android:assembleDebug`.
 
-### Performance Check
-- Ensure that the graphical frames and bars don't cause significant overhead during menu transitions on mobile.
+### Manual Verification
+- **Village**: Confirm that the beautiful island village background is now visible instead of the blue grid.
+- **Forest**: Confirm that trees and grass look like a real forest.
+- **Collisions**: Ensure that even with the new visuals, collisions still prevent the player from walking through water or walls.

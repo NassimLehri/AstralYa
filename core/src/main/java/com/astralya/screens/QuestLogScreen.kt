@@ -20,6 +20,7 @@ class QuestLogScreen(
     private var pixelRegion: TextureRegion? = null
     private val activeQuests = state.getActiveQuests()
     private var elapsed = 0f
+    private val touchVec = com.badlogic.gdx.math.Vector3()
 
     override fun show() {
         val pixmap = com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888)
@@ -38,8 +39,10 @@ class QuestLogScreen(
         }
         
         if (Gdx.input.justTouched()) {
-            val touchX = Gdx.input.x.toFloat() * (game.viewport.worldWidth / Gdx.graphics.width)
-            val touchY = (Gdx.graphics.height - Gdx.input.y.toFloat()) * (game.viewport.worldHeight / Gdx.graphics.height)
+            touchVec.set(Gdx.input.x.toFloat(), Gdx.input.y.toFloat(), 0f)
+            game.viewport.unproject(touchVec)
+            val touchX = touchVec.x
+            val touchY = touchVec.y
             if (touchX > game.viewport.worldWidth - 160f && touchY < 60f) {
                 game.setScreen(parentScreen)
                 return

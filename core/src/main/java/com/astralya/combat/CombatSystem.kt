@@ -9,6 +9,7 @@ sealed class CombatAction {
     data class UseSkill(val hero: Hero, val skill: Skill, val target: Any?)       : CombatAction()
     data class UseCombo(val heroes: List<Hero>, val combo: ComboSkill, val targets: List<Enemy>) : CombatAction()
     data class UseItem(val hero: Hero, val item: Item, val target: Hero)          : CombatAction()
+    data class UseSummon(val hero: Hero, val summon: Summon, val targets: List<Enemy>) : CombatAction()
     object Flee : CombatAction()
 }
 
@@ -20,7 +21,8 @@ data class ActionResult(
     val statusApplied: StatusEffect = StatusEffect.NONE,
     val targetRevived: Boolean = false,
     val critical: Boolean = false,
-    val missed: Boolean   = false
+    val missed: Boolean   = false,
+    val isSummon: Boolean = false
 )
 
 data class CombatState(
@@ -56,15 +58,35 @@ class CombatSystem(private val rng: GameRandom) {
             is CombatAction.UseSkill -> listOf(executeSkill(action.hero, action.skill, action.target, state))
             is CombatAction.UseCombo -> executeCombo(action.heroes, action.combo, action.targets)
             is CombatAction.UseItem  -> listOf(executeItem(action.hero, action.item, action.target))
+            is CombatAction.UseSummon -> executeSummon(action.hero, action.summon, action.targets)
             is CombatAction.Flee     -> listOf(ActionResult("L'équipe prend la fuite !"))
         }
+
+    private fun executeSummon(hero: Hero, summon: Summon, targets: List<Enemy>): List<ActionResult> {
+        val results = mutableListOf<ActionResult>()
+        if (!hero.useMp(summon.mpCost)) {
+            results += ActionResult("${hero.name} n'a pas assez de MP pour invoquer ${summon.name} !")
+            return results
+        }
+        
+        results += ActionResult("✨ ${hero.name} invoque ${summon.name} !", mpUsed = summon.mpCost, isSummon = true)
+        
+        targets.filter { it.isAlive }.forEach { enemy ->
+            val dmg = summon.basePower + hero.totalMagic() * 3 + rng.nextInt(20, 51)
+            val dealt = enemy.takeDamage(dmg)
+            results += ActionResult("💥 ${summon.name} inflige $dealt dégâts à ${enemy.name} !", damageDealt = dealt, isSummon = true)
+        }
+        return results
+    }
 
     private fun executeAttack(hero: Hero, enemy: Enemy): ActionResult {
         // FIX PERF #6 — rng.nextBool / rng.nextFloat
         if (rng.nextBool(0.05f))
             return ActionResult("${hero.name} rate son attaque !", missed = true)
 
-        val isCrit = rng.nextBool(0.10f)
+        // Crit chance scaled by agility (Base 10% + Agi bonus up to 20%)
+        val critChance = 0.10f + (hero.agility / 100f).coerceAtMost(0.20f)
+        val isCrit = rng.nextBool(critChance)
         var damage = hero.totalAttack() + rng.nextInt(5, 16)
         if (isCrit) damage = (damage * 1.5f).roundToInt()
         val dealt = enemy.takeDamage(damage)
@@ -244,10 +266,31 @@ class CombatSystem(private val rng: GameRandom) {
 
     fun calculateRewards(enemies: List<Enemy>): CombatRewards {
         val totalExp  = enemies.sumOf { it.expReward }
-        val totalGold = enemies.sumOf { it.goldReward }
-        // FIX PERF #6 — rng.nextBool au lieu de Math.random() < 0.35
-        val drops = enemies.flatMap { e -> e.dropItems.filter { rng.nextBool(0.35f) } }
-        return CombatRewards(totalExp, totalGold, drops)
+        // Gold variance: 90% to 110% of base
+        val baseGold  = enemies.sumOf { it.goldReward }
+        val finalGold = (baseGold * rng.nextFloat(0.9f, 1.1f)).roundToInt()
+        
+        val drops = mutableListOf<String>()
+        enemies.forEach { e ->
+            // Common drops (35% rate or 85% for boss)
+            val baseRate = if (e.isBoss) 0.85f else 0.35f
+            e.dropItems.forEach { itemId ->
+                val item = ItemFactory.getById(itemId)
+                val rate = when (item?.type) {
+                    ItemType.WEAPON, ItemType.ARMOR -> baseRate * 0.5f // Rarer
+                    ItemType.ACCESSORY -> baseRate * 0.3f // Even rarer
+                    else -> baseRate
+                }
+                if (rng.nextBool(rate)) drops.add(itemId)
+            }
+            
+            // Boss guarantee: if boss and no drops yet, force the first item
+            if (e.isBoss && drops.isEmpty() && e.dropItems.isNotEmpty()) {
+                drops.add(e.dropItems[0])
+            }
+        }
+        
+        return CombatRewards(totalExp, finalGold, drops)
     }
 
     fun applyEndOfTurnEffects(state: CombatState): List<String> {
@@ -255,12 +298,12 @@ class CombatSystem(private val rng: GameRandom) {
         state.party.filter { it.isAlive }.forEach { hero ->
             when (hero.statusEffect) {
                 StatusEffect.POISON -> {
-                    val dmg = (hero.maxHp * 0.05f).toInt().coerceAtLeast(5)
+                    val dmg = (hero.maxHp * 0.07f).toInt().coerceAtLeast(10)
                     hero.takeDamage(dmg)
                     messages += "☠️ ${hero.name} subit $dmg dégâts de poison."
                 }
                 StatusEffect.BURN -> {
-                    val dmg = (hero.maxHp * 0.08f).toInt().coerceAtLeast(8)
+                    val dmg = (hero.maxHp * 0.10f).toInt().coerceAtLeast(15)
                     hero.takeDamage(dmg)
                     messages += "🔥 ${hero.name} brûle pour $dmg dégâts."
                 }
@@ -269,7 +312,7 @@ class CombatSystem(private val rng: GameRandom) {
         }
         state.enemies.filter { it.isAlive }.forEach { enemy ->
             if (enemy.statusEffect == StatusEffect.POISON) {
-                val dmg = (enemy.maxHp * 0.05f).toInt().coerceAtLeast(5)
+                val dmg = (enemy.maxHp * 0.07f).toInt().coerceAtLeast(10)
                 enemy.takeDamage(dmg)
                 messages += "☠️ ${enemy.name} subit $dmg dégâts de poison."
             }

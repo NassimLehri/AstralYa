@@ -18,6 +18,8 @@ class AssetLoader(private val manager: AssetManager) {
 
     fun loadAll() {
         // Textures individuelles - Héros
+        manager.load("sprites/male_walkcycle.png", Texture::class.java)
+        manager.load("sprites/female_walkcycle.png", Texture::class.java)
         manager.load("sprites/nassim.png", Texture::class.java)
         manager.load("sprites/yasmine.png", Texture::class.java)
         manager.load("sprites/lwiz.png", Texture::class.java)
@@ -27,6 +29,18 @@ class AssetLoader(private val manager: AssetManager) {
         manager.load("sprites/enemy_loup.png", Texture::class.java)
         manager.load("sprites/enemy_golem.png", Texture::class.java)
         manager.load("sprites/boss_morvax.png", Texture::class.java)
+        
+        // Nouveaux monstres
+        manager.load("sprites/bat.png", Texture::class.java)
+        manager.load("sprites/bee.png", Texture::class.java)
+        manager.load("sprites/ghost.png", Texture::class.java)
+        manager.load("sprites/slime.png", Texture::class.java)
+        manager.load("sprites/snake.png", Texture::class.java)
+        manager.load("sprites/eyeball.png", Texture::class.java)
+        manager.load("sprites/big_worm.png", Texture::class.java)
+        manager.load("sprites/small_worm.png", Texture::class.java)
+        manager.load("sprites/pumpking.png", Texture::class.java)
+        manager.load("sprites/man_eater_flower.png", Texture::class.java)
 
         // Textures fonds et décors
         manager.load("sprites/splash.png", Texture::class.java)
@@ -39,10 +53,23 @@ class AssetLoader(private val manager: AssetManager) {
         manager.load("sprites/battle_bg_chateau.png", Texture::class.java)
         manager.load("sprites/battle_bg_village.png", Texture::class.java)
 
-        // UI
+        // UI et Sprites Interactifs
         manager.load("sprites/ui_frame.png", Texture::class.java)
         manager.load("sprites/cursor.png", Texture::class.java)
         manager.load("sprites/effects.png", Texture::class.java)
+
+        // Assets Optionnels
+        safeLoad("sprites/male_pants.png", Texture::class.java)
+        safeLoad("sprites/hairmale.png", Texture::class.java)
+        safeLoad("sprites/hairfemale.png", Texture::class.java)
+        safeLoad("sprites/soldier.png", Texture::class.java)
+        safeLoad("sprites/soldier_altcolor.png", Texture::class.java)
+        safeLoad("sprites/princess.png", Texture::class.java)
+        safeLoad("sprites/portal.png", Texture::class.java)
+        safeLoad("sprites/chest_closed.png", Texture::class.java)
+        safeLoad("sprites/chest_open.png", Texture::class.java)
+        safeLoad("sprites/_map_village_bg.png", Texture::class.java)
+        safeLoad("sprites/_map_foret_bg.png", Texture::class.java)
 
         // Audio - Musique
         manager.load("audio/music_village.ogg", Music::class.java)
@@ -77,19 +104,40 @@ class AssetLoader(private val manager: AssetManager) {
         manager.load("maps/temple.tmx", TiledMap::class.java)
         manager.load("maps/cite_volante.tmx", TiledMap::class.java)
         manager.load("maps/chateau.tmx", TiledMap::class.java)
+        manager.load("maps/maison_interieur.tmx", TiledMap::class.java)
+        manager.load("maps/chateau_etage_2.tmx", TiledMap::class.java)
     }
 
     fun update(): Boolean = manager.update()
+
+    private fun <T> safeLoad(path: String, type: Class<T>) {
+        // Sur Android, exists() peut être lent. On tente le load direct, 
+        // l'AssetManager gérera l'erreur si le fichier manque.
+        try {
+            manager.load(path, type)
+        } catch (e: Exception) {
+            com.badlogic.gdx.Gdx.app.error("AstralYa", "Erreur safeLoad : $path")
+        }
+    }
 
     val progress: Float get() = manager.progress
 
     fun <T> get(path: String, type: Class<T>): T = manager.get(path, type)
 
     fun getTexture(path: String): Texture = try {
-        if (!manager.isLoaded(path)) manager.finishLoadingAsset<Texture>(path)
-        manager.get(path, Texture::class.java)
+        if (manager.isLoaded(path)) {
+            manager.get(path, Texture::class.java)
+        } else {
+            // Si pas chargé, on tente de le finir proprement (si mis en file d'attente)
+            if (manager.getAssetNames().contains(path, false)) {
+                manager.finishLoadingAsset<Texture>(path)
+                manager.get(path, Texture::class.java)
+            } else {
+                throw Exception("Asset non en file d'attente")
+            }
+        }
     } catch (e: Exception) {
-        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Texture non trouvée ou non chargée: $path")
+        com.badlogic.gdx.Gdx.app.error("AstralYa", "ERREUR ASSET: Texture absente : $path")
         throw e
     }
 
@@ -140,11 +188,19 @@ class AssetLoader(private val manager: AssetManager) {
 
     fun getEnemyTexture(enemyId: String): Texture {
         val path = when {
-            enemyId.contains("slime") -> "sprites/enemy_slime.png"
-            enemyId.contains("loup")  -> "sprites/enemy_loup.png"
-            enemyId.contains("golem") -> "sprites/enemy_golem.png"
-            enemyId == "morvax"       -> "sprites/boss_morvax.png"
-            else                      -> "sprites/enemy_slime.png" // Fallback
+            enemyId.contains("slime_vert")   -> "sprites/slime.png"
+            enemyId.contains("loup")         -> "sprites/enemy_loup.png"
+            enemyId.contains("golem")        -> "sprites/enemy_golem.png"
+            enemyId.contains("chauve_souris") -> "sprites/bat.png"
+            enemyId.contains("serpent")      -> "sprites/snake.png"
+            enemyId.contains("ghost") || enemyId.contains("ombre") -> "sprites/ghost.png"
+            enemyId.contains("oeil")         -> "sprites/eyeball.png"
+            enemyId.contains("bee") || enemyId.contains("fee") -> "sprites/bee.png"
+            enemyId.contains("ver_geant")    -> "sprites/big_worm.png"
+            enemyId.contains("citrouille")   -> "sprites/pumpking.png"
+            enemyId.contains("fleur")        -> "sprites/man_eater_flower.png"
+            enemyId == "morvax"              -> "sprites/boss_morvax.png"
+            else                             -> "sprites/enemy_slime.png" // Fallback
         }
         return getTexture(path)
     }

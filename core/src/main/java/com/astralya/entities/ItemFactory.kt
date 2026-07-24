@@ -82,6 +82,18 @@ object ItemFactory {
         description = "Protection légère pour tous.", defenseBonus = 12, value = 200,
         equipableBy = listOf(HeroId.NASSIM, HeroId.YASMINE, HeroId.LWIZ)
     )
+    val PLASTRON_DIVIN = Item(
+        id = "plastron_divin", name = "Plastron Divin", type = ItemType.ARMOR,
+        description = "Une armure bénie par les anciens dieux.",
+        defenseBonus = 60, magicBonus = 15, value = 5000,
+        equipableBy = listOf(HeroId.NASSIM)
+    )
+    val GRIMOIRE_ANCIENS = Item(
+        id = "grimoire_anciens", name = "Grimoire des Anciens", type = ItemType.WEAPON,
+        description = "Contient des secrets magiques oubliés.",
+        attackBonus = 15, magicBonus = 90, value = 4500,
+        equipableBy = listOf(HeroId.LWIZ)
+    )
 
     // ── Accessoires ───────────────────────────────────────────────────────────
     val ANNEAU_MANA = Item(
@@ -92,6 +104,12 @@ object ItemFactory {
     val AMULETTE_VIE = Item(
         id = "amulette_vie", name = "Amulette de Vie", type = ItemType.ACCESSORY,
         description = "Renforce la défense.", defenseBonus = 10, value = 400,
+        equipableBy = listOf(HeroId.NASSIM, HeroId.YASMINE, HeroId.LWIZ)
+    )
+    val ANNEAU_INFINI = Item(
+        id = "anneau_infini", name = "Anneau de l'Infini", type = ItemType.ACCESSORY,
+        description = "Un anneau qui canalise l'énergie du vide.",
+        attackBonus = 10, magicBonus = 30, defenseBonus = 10, value = 3500,
         equipableBy = listOf(HeroId.NASSIM, HeroId.YASMINE, HeroId.LWIZ)
     )
 
@@ -124,6 +142,9 @@ object ItemFactory {
         "armure_cuir" to ARMURE_CUIR,
         "anneau_mana" to ANNEAU_MANA,
         "amulette_vie" to AMULETTE_VIE,
+        "anneau_infini" to ANNEAU_INFINI,
+        "plastron_divin" to PLASTRON_DIVIN,
+        "grimoire_anciens" to GRIMOIRE_ANCIENS,
         "cristal_1" to CRISTAL_STELLAIRE_1,
         "cristal_2" to CRISTAL_STELLAIRE_2
     )

@@ -15,6 +15,7 @@ data class Quest(
     val rewardGold: Int = 0,
     val rewardExp: Int = 0,
     val rewardItemId: String = "",
+    val rewardSummonId: String = "",
     val isMainQuest: Boolean = false
 )
 
@@ -29,7 +30,7 @@ object QuestRegistry {
         isMainQuest = true,
         rewardGold = 200, rewardExp = 300,
         steps = listOf(
-            QuestStep("Parlez à l'Ancien Lyros au village.", targetMapId = "village_depart", targetNpcId = "ancien_village"),
+            QuestStep("Parlez à l'Ancien Lyros dans sa maison.", targetMapId = "maison_interieur", targetNpcId = "ancien_village"),
             QuestStep("Entrez dans la Forêt Enchantée.", targetMapId = "foret_enchantee"),
             QuestStep("Retrouvez la Dryade Elysia.", targetMapId = "foret_enchantee", targetNpcId = "dryade")
         )
@@ -115,6 +116,48 @@ object QuestRegistry {
         )
     )
 
+    val QUETE_REVEIL_DIVINITES = Quest(
+        id = "quete_reveil_divinites",
+        title = "Le Réveil des Divinités",
+        description = "Un ancien rituel permet d'invoquer les esprits protecteurs. Trouvez l'autel sacré dans le temple.",
+        isMainQuest = true,
+        rewardGold = 1200, rewardExp = 2000,
+        rewardSummonId = "summon_loup",
+        steps = listOf(
+            QuestStep("Atteignez le niveau 10 avec l'équipe."),
+            QuestStep("Parlez au Grand Prêtre Auron.", targetNpcId = "pretre_temple"),
+            QuestStep("Méditez devant l'autel central du temple.")
+        )
+    )
+
+    val QUETE_FLEAU_CITE = Quest(
+        id = "quete_fleau_cite",
+        title = "Le Fléau de la Cité",
+        description = "Un Automate corrompu sème le chaos dans la Cité Volante. Éliminez-le pour libérer la cité.",
+        isMainQuest = true,
+        rewardGold = 2500, rewardExp = 3500,
+        rewardItemId = "orb_cosmique",
+        steps = listOf(
+            QuestStep("Atteignez le niveau 15."),
+            QuestStep("Parlez à l'Ingénieure Calia.", targetMapId = "cite_volante", targetNpcId = "ingenieur_chef"),
+            QuestStep("Détruisez l'Automate corrompu au centre de la cité.")
+        )
+    )
+
+    val QUETE_EPREUVE_STELLAIRE = Quest(
+        id = "quete_epreuve_stellaire",
+        title = "L'Épreuve Stellaire",
+        description = "Le Château de Morvax est protégé par un bouclier du néant. Prouvez votre valeur pour le briser.",
+        isMainQuest = true,
+        rewardGold = 3000, rewardExp = 5000,
+        rewardSummonId = "summon_stellar",
+        steps = listOf(
+            QuestStep("Trouvez les 3 Gardiens Spectraux dans le château."),
+            QuestStep("Battez chaque gardien en duel."),
+            QuestStep("Utilisez le Cristal Stellaire sur l'autel final.")
+        )
+    )
+
     // ── Quêtes secondaires ────────────────────────────────────────────────────
 
     val QUETE_CHAT = Quest(
@@ -130,6 +173,72 @@ object QuestRegistry {
         )
     )
 
+    val QUETE_MATERIAUX = Quest(
+        id = "quete_materiaux",
+        title = "Matériaux Précieux",
+        description = "Le forgeron a besoin de fragments de cristal rares pour une armure légendaire.",
+        isMainQuest = false,
+        rewardGold = 800, rewardExp = 1000, rewardItemId = "amulette_vie",
+        steps = listOf(
+            QuestStep("Récupérez 5 fragments de cristal dans la grotte.", requiredItemId = "fragment_cristal"),
+            QuestStep("Rapportez les fragments au forgeron.", targetNpcId = "forgeron")
+        )
+    )
+
+    val QUETE_OMBRE_GROTTE = Quest(
+        id = "quete_ombre_grotte",
+        title = "L'Ombre de la Grotte",
+        description = "Une créature mystérieuse terrifie les mineurs. Trouvez-la et éliminez-la.",
+        isMainQuest = false,
+        rewardGold = 1000, rewardExp = 1500,
+        steps = listOf(
+            QuestStep("Parlez au Mineur Grum.", targetNpcId = "nain_mineur"),
+            QuestStep("Trouvez le passage secret dans la grotte."),
+            QuestStep("Battez l'Ombre de Cristal.")
+        )
+    )
+
+    val QUETE_HERITAGE_FORGERON = Quest(
+        id = "quete_heritage_forgeron",
+        title = "L'Héritage du Forgeron",
+        description = "Torvan veut recréer l'épée de son ancêtre. Il lui faut de l'acier stellaire.",
+        isMainQuest = false,
+        rewardGold = 1500, rewardExp = 2000,
+        rewardItemId = "epee_aurore",
+        steps = listOf(
+            QuestStep("Parlez au Forgeron Torvan.", targetNpcId = "forgeron"),
+            QuestStep("Récupérez l'Acier Stellaire dans les profondeurs du château.", requiredItemId = "acier_stellaire"),
+            QuestStep("Retournez voir Torvan.")
+        )
+    )
+
+    val QUETE_GRIMOIRE_PERDU = Quest(
+        id = "quete_grimoire_perdu",
+        title = "Le Grimoire Perdu",
+        description = "Un livre de sorts anciens est caché dans la bibliothèque du Temple.",
+        isMainQuest = false,
+        rewardGold = 500, rewardExp = 3000,
+        rewardItemId = "grimoire_anciens",
+        steps = listOf(
+            QuestStep("Explorez la bibliothèque du temple."),
+            QuestStep("Trouvez le grimoire derrière l'étagère secrète."),
+            QuestStep("Déchiffrez le grimoire.")
+        )
+    )
+
+    val QUETE_SECOURS_DESERT = Quest(
+        id = "quete_secours_desert",
+        title = "Secours dans le Désert",
+        description = "Un marchand s'est perdu dans une tempête de sable.",
+        isMainQuest = false,
+        rewardGold = 5000, rewardExp = 1000,
+        steps = listOf(
+            QuestStep("Trouvez le marchand Zara dans le désert.", targetNpcId = "nomade_ancien"),
+            QuestStep("Escortez Zara jusqu'au Temple."),
+            QuestStep("Recevez votre récompense.")
+        )
+    )
+
     val ALL_QUESTS: Map<String, Quest> = mapOf(
         "quete_principale_1" to QUETE_PRINCIPALE_1,
         "quete_cristal_foret" to QUETE_CRISTAL_FORET,
@@ -138,7 +247,15 @@ object QuestRegistry {
         "quete_temple_secret" to QUETE_TEMPLE_SECRET,
         "quete_histoire_morvax" to QUETE_HISTOIRE_MORVAX,
         "quete_final_morvax" to QUETE_FINAL_MORVAX,
-        "quete_secondaire_chat" to QUETE_CHAT
+        "quete_reveil_divinites" to QUETE_REVEIL_DIVINITES,
+        "quete_fleau_cite" to QUETE_FLEAU_CITE,
+        "quete_epreuve_stellaire" to QUETE_EPREUVE_STELLAIRE,
+        "quete_secondaire_chat" to QUETE_CHAT,
+        "quete_materiaux" to QUETE_MATERIAUX,
+        "quete_ombre_grotte" to QUETE_OMBRE_GROTTE,
+        "quete_heritage_forgeron" to QUETE_HERITAGE_FORGERON,
+        "quete_grimoire_perdu" to QUETE_GRIMOIRE_PERDU,
+        "quete_secours_desert" to QUETE_SECOURS_DESERT
     )
 
     fun getQuest(id: String): Quest? = ALL_QUESTS[id]

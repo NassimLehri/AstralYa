@@ -15,7 +15,8 @@ object HeroFactory {
                 type = SkillType.ATTACK,
                 element = Element.STELLAR,
                 basePower = 140,
-                animationId = "anim_sword_stellar"
+                animationId = "anim_sword_stellar",
+                unlockLevel = 1
             ),
             Skill(
                 id = "tempete_astrale",
@@ -26,7 +27,8 @@ object HeroFactory {
                 element = Element.STELLAR,
                 basePower = 110,
                 hitAll = true,
-                animationId = "anim_storm"
+                animationId = "anim_storm",
+                unlockLevel = 5
             ),
             Skill(
                 id = "protection_divine",
@@ -37,7 +39,8 @@ object HeroFactory {
                 element = Element.LIGHT,
                 basePower = 0,
                 statusEffect = StatusEffect.SHIELDED,
-                animationId = "anim_shield"
+                animationId = "anim_shield",
+                unlockLevel = 10
             ),
             Skill(
                 id = "jugement_sept_cieux",
@@ -48,7 +51,20 @@ object HeroFactory {
                 element = Element.STELLAR,
                 basePower = 280,
                 hitAll = true,
-                animationId = "anim_judgment"
+                animationId = "anim_judgment",
+                unlockLevel = 20
+            ),
+            Skill(
+                id = "aura_guerrier",
+                name = "Aura de Guerrier",
+                description = "Améliore considérablement l'attaque de l'équipe.",
+                mpCost = 25,
+                type = SkillType.BUFF,
+                element = Element.NEUTRAL,
+                basePower = 0,
+                statusEffect = StatusEffect.BLESSED,
+                animationId = "anim_warrior_aura",
+                unlockLevel = 15
             )
         ),
         baseMaxHp = 520,
@@ -73,7 +89,8 @@ object HeroFactory {
                 element = Element.LIGHT,
                 basePower = 0,
                 healAmount = 180,
-                animationId = "anim_heal"
+                animationId = "anim_heal",
+                unlockLevel = 1
             ),
             Skill(
                 id = "bouclier_sacre",
@@ -84,7 +101,8 @@ object HeroFactory {
                 element = Element.LIGHT,
                 basePower = 0,
                 statusEffect = StatusEffect.SHIELDED,
-                animationId = "anim_barrier"
+                animationId = "anim_barrier",
+                unlockLevel = 6
             ),
             Skill(
                 id = "purification",
@@ -96,7 +114,8 @@ object HeroFactory {
                 basePower = 0,
                 healAmount = 120,
                 hitAll = true,
-                animationId = "anim_purify"
+                animationId = "anim_purify",
+                unlockLevel = 12
             ),
             Skill(
                 id = "renaissance_astrale",
@@ -107,7 +126,20 @@ object HeroFactory {
                 element = Element.LIGHT,
                 basePower = 0,
                 healAmount = -1,    // signal: revive
-                animationId = "anim_revive"
+                animationId = "anim_revive",
+                unlockLevel = 18
+            ),
+            Skill(
+                id = "benediction_astrale",
+                name = "Bénédiction Astrale",
+                description = "Restaure progressivement les MP de l'équipe.",
+                mpCost = 30,
+                type = SkillType.BUFF,
+                element = Element.STELLAR,
+                basePower = 0,
+                statusEffect = StatusEffect.BLESSED,
+                animationId = "anim_blessing",
+                unlockLevel = 14
             )
         ),
         baseMaxHp = 380,
@@ -131,7 +163,8 @@ object HeroFactory {
                 type = SkillType.ATTACK,
                 element = Element.COSMIC,
                 basePower = 160,
-                animationId = "anim_beam"
+                animationId = "anim_beam",
+                unlockLevel = 1
             ),
             Skill(
                 id = "pluie_cometes",
@@ -142,7 +175,8 @@ object HeroFactory {
                 element = Element.COSMIC,
                 basePower = 130,
                 hitAll = true,
-                animationId = "anim_comet"
+                animationId = "anim_comet",
+                unlockLevel = 8
             ),
             Skill(
                 id = "nova_cosmique",
@@ -153,7 +187,8 @@ object HeroFactory {
                 element = Element.COSMIC,
                 basePower = 240,
                 hitAll = true,
-                animationId = "anim_nova"
+                animationId = "anim_nova",
+                unlockLevel = 15
             ),
             Skill(
                 id = "coeur_constellations",
@@ -164,7 +199,8 @@ object HeroFactory {
                 element = Element.COSMIC,
                 basePower = 320,
                 hitAll = true,
-                animationId = "anim_constellation"
+                animationId = "anim_constellation",
+                unlockLevel = 25
             )
         ),
         baseMaxHp = 320,
@@ -173,6 +209,13 @@ object HeroFactory {
         baseDefense = 22,
         baseAgility = 40,
         baseMagic = 72
+    )
+
+    // ── Summons ──────────────────────────────────────────────────────────────
+
+    val ALL_SUMMONS: List<Summon> = listOf(
+        Summon("summon_loup", "Esprit du Loup", "Une meute spectrale attaque tous les ennemis.", 25, Element.DARK, 180, animationId = "anim_summon_wolf"),
+        Summon("summon_stellar", "Divinité Stellaire", "Invoque la puissance pure des étoiles.", 60, Element.STELLAR, 450, animationId = "anim_summon_stellar")
     )
 
     fun createDefaultParty(): List<Hero> = listOf(createNassim(), createYasmine(), createLwiz())

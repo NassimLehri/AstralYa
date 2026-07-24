@@ -15,6 +15,12 @@ class GameRandom(seed: Long = System.currentTimeMillis()) {
     /** Float dans [0, 1) */
     fun nextFloat(): Float = rng.nextFloat()
 
+    /** Float dans [from, until) */
+    fun nextFloat(from: Float, until: Float): Float {
+        require(until > from) { "until ($until) doit être > from ($from)" }
+        return from + rng.nextFloat() * (until - from)
+    }
+
     /** Int dans [from, until) */
     fun nextInt(from: Int, until: Int): Int {
         require(until > from) { "until ($until) doit être > from ($from)" }

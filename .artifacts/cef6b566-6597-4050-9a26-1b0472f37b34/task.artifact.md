@@ -1,0 +1,3 @@
+- [x] Fix `SpawnShape` in `fireflies.p`
+- [x] Fix `SpawnShape` in `rain.p`
+- [x] Verify fix (No more `shape: rectangle` in particle files)

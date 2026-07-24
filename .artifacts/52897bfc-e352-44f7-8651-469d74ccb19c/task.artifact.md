@@ -1,6 +1,11 @@
-- [x] Update `UIScreens.kt` with unified framing and pulsing animations
-- [x] Enhance `SaveScreen` slots with Map/Gold/Playtime details
-- [x] Implement graphical HP/MP bars in `PartyScreen`
-- [x] Add scrolling logic to `InventoryScreen`
-- [x] Improve error handling and null safety in `SaveScreen`
-- [x] Update `walkthrough_visual_polish_v2.artifact.md` with the new changes
+- [ ] **1. Engine Fix: Full-Map Backgrounds**
+    - [ ] Update `ExplorationScreen.kt` to show prefixed backgrounds (`_map_...`)
+- [ ] **2. Map Registry: Visual Updates**
+    - [ ] Link `VILLAGE_DEPART` to `_map_village_bg.png`
+    - [ ] Adjust PNJ and Portal positions for the village
+- [ ] **3. TMX Painting: Forest, Desert, Grotto**
+    - [ ] Redesign `foret.tmx` with `tileset_foret.png`
+    - [ ] Redesign `desert.tmx` with mountains and sand variations
+    - [ ] Redesign `grotte.tmx` with cave walls and hazards
+- [ ] **4. Verification**
+    - [ ] Build and verify all maps visually

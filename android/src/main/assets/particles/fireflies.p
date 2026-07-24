@@ -5,8 +5,8 @@ active: false
 lowMin: 3000.0
 lowMax: 3000.0
 - Count -
-minParticleCount: 0
-maxParticleCount: 20
+min: 0
+max: 20
 - Emission -
 lowMin: 0.0
 lowMax: 0.0
@@ -134,4 +134,7 @@ continuous: true
 aligned: false
 additive: true
 behind: false
+premultipliedAlpha: false
+spriteMode: single
+- Image Paths -
 cursor.png

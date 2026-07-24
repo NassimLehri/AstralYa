@@ -65,6 +65,8 @@ class InventoryScreen(
     }
 
     override fun show() { 
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
         refreshCache() 
         elapsed = 0f
     }
@@ -290,7 +292,11 @@ class PartyScreen(
         private val C_HINT    = Color(0.45f, 0.45f, 0.55f, 1f)
     }
 
-    override fun show() { elapsed = 0f }
+    override fun show() { 
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
+        elapsed = 0f 
+    }
 
     override fun render(delta: Float) {
         elapsed += delta
@@ -477,6 +483,8 @@ class SaveScreen(
     }
 
     override fun show() {
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
         elapsed = 0f
         refreshSaves()
     }
@@ -692,7 +700,11 @@ class OptionsScreen(private val game: AstralYaGame) : Screen {
         private val C_UNSEL = Color(0.68f, 0.68f, 0.82f, 1f)
     }
 
-    override fun show() { elapsed = 0f }
+    override fun show() { 
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
+        elapsed = 0f 
+    }
 
     override fun render(delta: Float) {
         elapsed += delta

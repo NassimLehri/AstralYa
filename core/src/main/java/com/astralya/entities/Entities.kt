@@ -14,7 +14,14 @@ data class Skill(
     val basePower: Int, val hitAll: Boolean = false,
     val healAmount: Int = 0,
     val statusEffect: StatusEffect = StatusEffect.NONE,
-    val animationId: String = ""
+    val animationId: String = "",
+    val unlockLevel: Int = 1
+)
+
+data class Summon(
+    val id: String, val name: String, val description: String,
+    val mpCost: Int, val element: Element, val basePower: Int,
+    val hitAll: Boolean = true, val animationId: String = ""
 )
 
 data class ComboSkill(
@@ -40,8 +47,12 @@ class Hero(
     var statusEffect: StatusEffect = StatusEffect.NONE
     var isAlive: Boolean = true
     var weapon: Item? = null;  var armor: Item? = null;  var accessory: Item? = null
+    
+    val unlockedSummons = mutableListOf<Summon>()
 
     val expToNextLevel: Int get() = (level * level * 50) + (level * 100)
+
+    fun getAvailableSkills(): List<Skill> = skills.filter { it.unlockLevel <= level }
 
     /**
      * FIX PERF #6 — GameRandom injecté, plus de .random() Kotlin non seedable.

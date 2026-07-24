@@ -24,7 +24,10 @@ class SplashScreen(private val game: AstralYaGame) : Screen {
         private val C_WHITE  = Color(1f, 1f, 1f, 1f)
     }
 
-    override fun show() {}
+    override fun show() {
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
+    }
 
     override fun render(delta: Float) {
         elapsed += delta
@@ -89,7 +92,10 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
         )
     }
 
-    override fun show() {}
+    override fun show() {
+        game.viewport.camera.position.set(400f, 240f, 0f)
+        game.viewport.camera.update()
+    }
 
     override fun render(delta: Float) {
         elapsed += delta
@@ -182,7 +188,7 @@ open class MainMenuScreen(private val game: AstralYaGame) : Screen {
         when (selectedIndex) {
             0 -> {
                 game.gameState.newGame()
-                game.setScreen(ExplorationScreen(game, game.gameState))
+                game.setScreen(IntroScreen(game))
                 dispose()
             }
             1 -> {
