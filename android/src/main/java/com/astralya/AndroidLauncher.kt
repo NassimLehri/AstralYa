@@ -2,11 +2,12 @@ package com.astralya
 
 import android.os.Bundle
 import android.util.Log
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.badlogic.gdx.backends.android.AndroidApplication
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration
 import com.astralya.data.AstralYaDatabase
-import com.astralya.data.GameState
-import com.astralya.data.repository.GameRepository
+import com.astralya.game.save.GameStateManager
+import com.astralya.game.save.repository.GameRepository
 
 /**
  * AndroidLauncher gère le cycle de vie Android et l'injection des dépendances
@@ -16,13 +17,14 @@ class AndroidLauncher : AndroidApplication() {
 
     private var database: AstralYaDatabase? = null
     private var repository: GameRepository? = null
-    private lateinit var gameState: GameState
+    private lateinit var gameState: GameStateManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         Log.d("AstralYa", "Initializing GameState...")
-        gameState = GameState()
+        gameState = GameStateManager()
 
         try {
             Log.d("AstralYa", "Initializing Database...")

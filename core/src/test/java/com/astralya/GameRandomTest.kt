@@ -1,6 +1,6 @@
 package com.astralya
 
-import com.astralya.utils.GameRandom
+import com.astralya.engine.utils.GameRandom
 import org.junit.Assert.*
 import org.junit.Test
 

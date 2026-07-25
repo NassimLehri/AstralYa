@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.AstralYa" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+    <!-- Thème principal de l'application -->
+    <style name="Theme.AstralYa" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <!-- Thème spécial pour le Splash Screen (Android 12+) -->
+    <style name="Theme.AstralYa.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/black</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.AstralYa</item>
     </style>
 </resources>

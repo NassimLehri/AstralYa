@@ -12,20 +12,30 @@ const float vignette_opacity = 0.5;
 const float contrast = 1.1;
 const float saturation = 1.05;
 
+// Epic 14 — Simple Threshold Bloom
+const float bloom_threshold = 0.75;
+const float bloom_intensity = 0.4;
+
 void main() {
     vec4 texColor = texture2D(u_texture, v_texCoords);
     vec3 color = texColor.rgb * v_color.rgb;
 
-    // Vignette
+    // --- Bloom / Glow Pass ---
+    float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    if (luminance > bloom_threshold) {
+        color += color * (luminance - bloom_threshold) * bloom_intensity;
+    }
+
+    // --- Vignette ---
     vec2 relativePosition = v_texCoords - 0.5;
     float dist = length(relativePosition);
     float vignette = smoothstep(0.5, 0.5 - vignette_intensity, dist);
     color = mix(color * vignette, color, 1.0 - vignette_opacity);
 
-    // Contrast
+    // --- Contrast ---
     color = (color - 0.5) * contrast + 0.5;
 
-    // Saturation (Subtle)
+    // --- Saturation ---
     float gray = dot(color, vec3(0.299, 0.587, 0.114));
     color = mix(vec3(gray), color, saturation);
 

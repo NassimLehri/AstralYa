@@ -1,7 +1,7 @@
 package com.astralya.lwjgl3
 
-import com.astralya.data.dao.*
-import com.astralya.data.entities.*
+import com.astralya.game.save.dao.*
+import com.astralya.game.save.entities.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 

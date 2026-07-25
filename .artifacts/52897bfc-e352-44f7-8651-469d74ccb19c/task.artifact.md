@@ -1,11 +1,16 @@
-- [ ] **1. Engine Fix: Full-Map Backgrounds**
-    - [ ] Update `ExplorationScreen.kt` to show prefixed backgrounds (`_map_...`)
-- [ ] **2. Map Registry: Visual Updates**
-    - [ ] Link `VILLAGE_DEPART` to `_map_village_bg.png`
-    - [ ] Adjust PNJ and Portal positions for the village
-- [ ] **3. TMX Painting: Forest, Desert, Grotto**
-    - [ ] Redesign `foret.tmx` with `tileset_foret.png`
-    - [ ] Redesign `desert.tmx` with mountains and sand variations
-    - [ ] Redesign `grotte.tmx` with cave walls and hazards
-- [ ] **4. Verification**
-    - [ ] Build and verify all maps visually
+- [x] **Epic 18: Advanced Testing Suite**
+    - [x] Create `GameFlowIntegrationTest.kt` for full gameplay loop simulation
+    - [x] Create `BalancingTest.kt` for automatic JSON data verification
+    - [x] Add lifecycle tests in `UIFrameworkTest.kt`
+    - [x] Create `ResourceStreamingTest.kt` for memory management verification
+- [x] **Epic 17: Tools & Editors (Finalized)**
+    - [x] Add `isEditorMode` and save hooks to `AstralEngine.kt`
+    - [x] Create `DataEditorScreen.kt` utilizing the UI Framework
+    - [x] Add "QUESTS" mode to `DataEditorScreen`
+    - [x] Create `android/src/main/assets/data/quests.json`
+    - [x] Update `QuestRegistry.kt` to be data-driven
+    - [x] Implement enhanced property editing (Rarity, Elements, AI types)
+- [x] **Epic 11: Data-Driven (Completed)**
+    - [x] Items JSON
+    - [x] Enemies JSON
+    - [x] Quests JSON

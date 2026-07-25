@@ -3,8 +3,8 @@ package com.astralya.lwjgl3
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration
 import com.astralya.AstralYaGame
-import com.astralya.data.GameState
-import com.astralya.data.repository.GameRepository
+import com.astralya.game.save.GameStateManager
+import com.astralya.game.save.repository.GameRepository
 
 fun main() {
     val repository = GameRepository(
@@ -13,7 +13,7 @@ fun main() {
         MockQuestDao(),
         MockSaveDao()
     )
-    val gameState = GameState()
+    val gameState = GameStateManager()
 
     val config = Lwjgl3ApplicationConfiguration().apply {
         setTitle("AstralYa - Desktop")

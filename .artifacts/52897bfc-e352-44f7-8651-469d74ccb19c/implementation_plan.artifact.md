@@ -1,43 +1,44 @@
-# Implementation Plan - Total Graphical Overhaul of Maps
+# Implementation Plan - Finalizing Epic 17 (Editors) & Data-Driven Quests
 
-The goal is to replace the "repetitive grid" look with the high-quality assets already present in the project but currently ignored or unused.
+This plan completes the "Developer Tools" epic by making the Quest system data-driven and expanding the `DataEditorScreen` to handle all game content (Items, Enemies, Quests) with full property editing.
 
 ## Proposed Changes
 
-### [1. Engine Support for Full-Map Backgrounds]
+### [1. Data-Driven Quests (Epic 11 Completion)]
 
-#### [MODIFY] [ExplorationScreen.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/screens/ExplorationScreen.kt)
-- Remove the logic that skips background images starting with `_`. This prefix was preventing `_map_village_bg.png` (the beautiful island village) from being displayed.
-- Ensure that when a `mapBgTexture` is drawn, it uses the map's full pixel dimensions (`widthTiles * TILE_SIZE`).
+#### [NEW] `quests.json` (in `android/src/main/assets/data/`)
+- Move all hardcoded quests from `QuestRegistry` to this JSON file.
 
-### [2. Map Registry & Asset Linkage]
+#### [MODIFY] [QuestRegistry.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/game/quests/QuestSystem.kt)
+- Refactor `loadQuests()` to pull data from `DataManager`.
 
-#### [MODIFY] [MapSystem.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/map/MapSystem.kt)
-- Update `visualBg` for all maps:
-    - `VILLAGE_DEPART`: Use `sprites/_map_village_bg.png`.
-    - `FORET_ENCHANTEE`: Use `sprites/_map_foret_bg.png` (Note: If this is a tileset, we will paint the TMX instead).
-- Verify and update `Portal` and `NPC` positions to match the visuals of the new background images (especially for the island village).
+#### [MODIFY] [DataManager.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/engine/core/DataManager.kt)
+- Add support for loading `Quest` objects from JSON.
 
-### [3. TMX Painting (For maps without full backgrounds)]
+---
 
-#### [MODIFY] [foret.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/foret.tmx)
-- Replace the solid grid with a varied layout using `tileset_foret.png`.
-- Add clumps of trees using the `Trees` layer.
+### [2. Advanced Data Editor (Epic 17)]
 
-#### [MODIFY] [desert.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/desert.tmx)
-- Use different dirt/sand tiles to create a natural terrain.
-- Add "Mountains" tiles (IDs 17-80) at the borders and as obstacles.
+#### [MODIFY] [DataEditorScreen.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/ui/screens/DataEditorScreen.kt)
+- **Quest Mode**: Add a third mode ("QUESTS") to edit quest titles, descriptions, and rewards.
+- **Enhanced Item Panel**: Add controls for `ItemRarity` (cycle through tiers) and `ItemType`.
+- **Enhanced Enemy Panel**: Add controls for `Element` and `aiType`.
+- **Better Navigation**: Ensure the "Details" panel on the right scales better with more fields.
 
-#### [MODIFY] [grotte.tmx](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/android/src/main/assets/maps/grotte.tmx)
-- Redesign the layout to feel like a cave (winding paths, dead ends).
-- Use `lava.png` (Hazards layer) sparingly for visual interest.
+---
+
+### [3. Reliability Fixes]
+
+#### [MODIFY] [Entities.kt](file:///C:/Users/nassim_lehri/Downloads/AstralYa-v4-Final/AstralYa_v4/core/src/main/java/com/astralya/game/entities/Entities.kt)
+- Ensure all relevant data classes have no-arg constructors (or default values) for LibGDX JSON deserialization.
 
 ## Verification Plan
 
 ### Automated Tests
-- Build and run the project: `./gradlew :android:assembleDebug`.
+- Run `QuestSystemTest.kt` to ensure quest logic still works with JSON data.
 
-### Manual Verification
-- **Village**: Confirm that the beautiful island village background is now visible instead of the blue grid.
-- **Forest**: Confirm that trees and grass look like a real forest.
-- **Collisions**: Ensure that even with the new visuals, collisions still prevent the player from walking through water or walls.
+### Manual Verification (Desktop)
+- **Launch Editor**: Use `EditorLauncher`.
+- **Edit Quest**: Modify the gold reward of "L'Éveil des Gardiens".
+- **Save & Reload**: Verify `quests.json` on disk updates and the change is reflected in the game.
+- **Full Coverage**: Navigate between Items, Enemies, and Quests modes.

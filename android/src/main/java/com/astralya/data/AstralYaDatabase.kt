@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.astralya.data.dao.*
-import com.astralya.data.entities.*
+import com.astralya.game.save.dao.*
+import com.astralya.game.save.entities.*
 
 @Database(
     entities = [

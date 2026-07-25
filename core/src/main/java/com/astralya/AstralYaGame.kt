@@ -1,79 +1,72 @@
 package com.astralya
 
-import com.badlogic.gdx.Game
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.g2d.SpriteBatch
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.badlogic.gdx.assets.AssetManager
-import com.astralya.data.GameState
-import com.astralya.data.repository.GameRepository
-import com.astralya.screens.LoadingScreen
-import com.astralya.utils.AssetLoader
-import com.astralya.utils.FontManager
-import com.astralya.utils.GameRandom
-import com.astralya.audio.AudioManager
-import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.utils.viewport.FitViewport
-import com.badlogic.gdx.utils.viewport.Viewport
+import com.astralya.game.save.GameStateManager
+import com.astralya.game.save.repository.GameRepository
+import com.astralya.ui.screens.LoadingScreen
+import com.astralya.engine.core.*
+import com.astralya.engine.di.createAppModule
+import com.astralya.engine.utils.FontManager
+import com.astralya.engine.utils.GameRandom
+import com.astralya.game.combat.CombatSystem
+import com.astralya.game.world.MapRegistry
+import com.astralya.game.world.DungeonRegistry
+import com.astralya.game.quests.QuestRegistry
+import com.astralya.game.save.SaveManager
+import com.astralya.engine.utils.*
+import org.koin.core.context.startKoin
+import org.koin.core.component.inject
+import org.koin.core.component.get
 
-class AstralYaGame(
+open class AstralYaGame(
     val repository: GameRepository,
-    val gameState: GameState
-) : Game() {
+    val gameStateManager: GameStateManager
+) : AstralEngine() {
 
-    lateinit var batch: SpriteBatch
-    lateinit var assetManager: AssetManager
-    lateinit var assetLoader: AssetLoader
-    lateinit var audioManager: AudioManager
-    lateinit var shapeRenderer: ShapeRenderer
+    val dataManager: DataManager by inject()
+    val eventBus: EventBus by inject()
+    val localization: LocalizationManager by inject()
+    val fonts: FontManager by inject()
+    val mapRegistry: MapRegistry by inject()
+    val dungeonRegistry: DungeonRegistry by inject()
+    val questRegistry: QuestRegistry by inject()
+    val saveManager: SaveManager by inject()
+    val weatherSystem: WeatherSystem by inject()
+    val shakeManager: ScreenShakeManager by inject()
 
-    // Gestion de la résolution virtuelle (800x480)
-    lateinit var camera: OrthographicCamera
-    lateinit var viewport: Viewport
+    fun getCombatSystem(): CombatSystem = get<CombatSystem>()
 
-    // FIX PERF #8 — FontManager remplace le BitmapFont unique + setScale()
-    lateinit var fonts: FontManager
-
-    // FIX PERF #6 — GameRandom central, injectable dans CombatSystem etc.
     val random: GameRandom = GameRandom()
-
     var assetsLoaded = false
 
     override fun create() {
-        batch         = SpriteBatch()
-        shapeRenderer = ShapeRenderer()
-        assetManager  = AssetManager()
-        assetLoader   = AssetLoader(assetManager)
-        audioManager  = AudioManager()
-        fonts         = FontManager()
+        // Initialisation de Koin avant tout le reste
+        startKoin {
+            modules(createAppModule(this@AstralYaGame, repository, gameStateManager))
+        }
+        
+        // Setup EventBus
+        gameStateManager.eventBus = eventBus
+        
+        // LibGDX infrastructure via base class
+        super.create()
+    }
 
-        camera   = OrthographicCamera()
-        viewport = FitViewport(800f, 480f, camera)
-        viewport.apply(true)
-
+    override fun onEngineInit() {
         Gdx.graphics.isContinuousRendering = true
         Gdx.input.setCatchKey(Input.Keys.BACK, true)
-        assetLoader.loadAll()
-        setScreen(LoadingScreen(this))
-    }
-
-    override fun render() {
-        // Nécessaire pour les fades audio
-        audioManager.update(Gdx.graphics.deltaTime)
-        super.render()
-    }
-    override fun resize(w: Int, h: Int) {
-        viewport.update(w, h, true)
-        super.resize(w, h)
+        
+        // Data and initial zone loading
+        dataManager.loadAll()
+        resourceManager.loadAll()
+        resourceManager.loadZone(GameStateManager.STARTING_MAP_ID, mapRegistry)
+        
+        screenManager.setScreen(LoadingScreen(this))
     }
 
     override fun dispose() {
-        batch.dispose()
-        shapeRenderer.dispose()
-        assetManager.dispose()
-        audioManager.dispose()
         fonts.dispose()
-        screen?.dispose()
+        super.dispose()
     }
 }

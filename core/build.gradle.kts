@@ -13,8 +13,13 @@ dependencies {
     // Room annotations pour que Core puisse définir les DAOs et Entities
     implementation("androidx.room:room-common:$roomVersion")
 
+    // Injection de dépendances
+    val koinVersion = "4.0.0"
+    implementation("io.insert-koin:koin-core:$koinVersion")
+
     // Tests unitaires (pas de dépendance Android)
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.3.0")
 }
 
