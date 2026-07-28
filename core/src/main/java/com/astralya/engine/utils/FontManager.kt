@@ -24,15 +24,29 @@ class FontManager {
         var loadedBitmap = false
         if (fontsDir.exists()) {
             val list = fontsDir.list()
-            val fnt = list?.firstOrNull { it.extension().equals("fnt", ignoreCase = true) }
-            if (fnt != null) {
-                Gdx.app.log("AstralYa", "Chargement BitmapFont: ${fnt.path()}")
-                tiny   = BitmapFont(fnt).apply { data.setScale(0.6f) }
-                small  = BitmapFont(fnt).apply { data.setScale(0.8f) }
-                normal = BitmapFont(fnt)
-                medium = BitmapFont(fnt).apply { data.setScale(1.2f) }
-                large  = BitmapFont(fnt).apply { data.setScale(1.6f) }
-                title  = BitmapFont(fnt).apply { data.setScale(2.4f) }
+            val fnts = list?.filter { it.extension().equals("fnt", ignoreCase = true) } ?: emptyList()
+            var chosen: com.badlogic.gdx.files.FileHandle? = null
+            for (fh in fnts) {
+                try {
+                    val content = fh.readString()
+                    val m = Regex("page\\s+id=\\d+\\s+file=\"([^\"]+)\"").find(content)
+                    val pageName = m?.groups?.get(1)?.value
+                    if (pageName != null) {
+                        val img = Gdx.files.internal("fonts/$pageName")
+                        if (img.exists()) { chosen = fh; break }
+                    }
+                } catch (e: Exception) {
+                    // ignore malformed fnt
+                }
+            }
+            if (chosen != null) {
+                Gdx.app.log("AstralYa", "Chargement BitmapFont: ${chosen.path()}")
+                tiny   = BitmapFont(chosen).apply { data.setScale(0.6f) }
+                small  = BitmapFont(chosen).apply { data.setScale(0.8f) }
+                normal = BitmapFont(chosen)
+                medium = BitmapFont(chosen).apply { data.setScale(1.2f) }
+                large  = BitmapFont(chosen).apply { data.setScale(1.6f) }
+                title  = BitmapFont(chosen).apply { data.setScale(2.4f) }
                 loadedBitmap = true
             }
         }
