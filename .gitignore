@@ -18,3 +18,7 @@ Thumbs.db
 **/audit_baseline*.png
 **/libs/*.so
 
+
+# Ignore automated screenshot trigger
+capture_screenshot
+screenshots/
