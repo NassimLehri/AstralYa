@@ -10,10 +10,13 @@ import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 /**
  * Lightweight diagnostic renderer that can render the map and overlay a simple grid for debugging.
  */
-class DiagnosticTiledMapRenderer(map: TiledMap, unitScale: Float = 1f, batch: Batch? = null) :
-    if (batch != null) OrthogonalTiledMapRenderer(map, unitScale, batch) else OrthogonalTiledMapRenderer(map, unitScale) {
+class DiagnosticTiledMapRenderer : OrthogonalTiledMapRenderer {
 
     private val shape = ShapeRenderer()
+
+    constructor(map: TiledMap, unitScale: Float = 1f) : super(map, unitScale)
+    constructor(map: TiledMap, unitScale: Float = 1f, batch: Batch) : super(map, unitScale, batch)
+
 
     fun renderWithDiagnostics(camera: OrthographicCamera, drawGrid: Boolean = false) {
         setView(camera)

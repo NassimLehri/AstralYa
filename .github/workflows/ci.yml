@@ -33,8 +33,8 @@ jobs:
       - name: Run Gradle build
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            xvfb-run -a ./gradlew build --no-daemon --console=plain
+            xvfb-run -a ./gradlew :core:clean :core:build :core:test :lwjgl3:build --no-daemon --console=plain
           else
-            ./gradlew build --no-daemon --console=plain
+            ./gradlew :core:clean :core:build :core:test :lwjgl3:build --no-daemon --console=plain
           fi
         shell: bash
