@@ -56,6 +56,15 @@ class ResourceManager(private val manager: AssetManager) {
             .forEach { loadSoundFallback(it) }
     }
 
+    private fun loadSoundFallback(name: String) {
+        try {
+            val base = "audio/sfx_$name.ogg"
+            val resolved = resolveAudioPathFrom(base) ?: "audio/sfx_$name.mp3"
+            val fh = com.badlogic.gdx.Gdx.files.internal(resolved)
+            if (fh.exists()) manager.load(resolved, Sound::class.java)
+        } catch (_: Exception) {}
+    }
+
     fun loadZone(mapId: String, registry: MapRegistry) {
         if (currentLoadedZone == mapId) return
         val map = registry.getMap(mapId) ?: return
