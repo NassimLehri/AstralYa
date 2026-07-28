@@ -32,5 +32,5 @@ tasks.register<JavaExec>("texturePack") {
     classpath = configurations.getByName("texturePacker")
     mainClass.set("com.badlogic.gdx.tools.texturepacker.TexturePacker")
     // default args: inputDir outputDir packFileName
-    args("android/src/main/assets/sprites", "android/src/main/assets/atlases", "sprites")
+    args("--maxwidth=2048", "--maxheight=2048", "--multipack", "android/src/main/assets/sprites", "android/src/main/assets/atlases", "sprites")
 }
