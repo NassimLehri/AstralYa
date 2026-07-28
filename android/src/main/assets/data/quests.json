@@ -1,0 +1,33 @@
+[
+  {
+    "id": "quete_principale_1",
+    "title": "L'Éveil des Gardiens",
+    "description": "Parlez à l'Ancien Lyros dans le village.",
+    "steps": [
+      { "description": "Parlez à Lyros.", "targetNpcId": "ancien_village" }
+    ],
+    "rewards": [
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Exp", "amount": 100 },
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Gold", "amount": 50 }
+    ]
+  },
+  {
+    "id": "quete_secret_sables",
+    "title": "Le Secret des Sables",
+    "description": "Un Gardien Antique attend dans les sables.",
+    "requirements": [
+      { "class": "com.astralya.game.quests.QuestRequirement${"$"}MinLevel", "level": 5 }
+    ],
+    "steps": [
+      { "description": "Trouvez la Tablette.", "requiredItemId": "vieille_tablette" },
+      { "description": "Entrez dans le Sanctuaire." },
+      { "description": "Battez le Gardien.", "requiredEnemyId": "gardien_antique" }
+    ],
+    "rewards": [
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Gold", "amount": 5000 },
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Exp", "amount": 10000 },
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Item", "itemId": "anneau_infini", "quantity": 1 },
+      { "class": "com.astralya.game.quests.QuestReward${"$"}Reputation", "amount": 50 }
+    ]
+  }
+]

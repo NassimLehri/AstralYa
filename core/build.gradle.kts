@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    val gdxVer = "1.12.1"
+    val gdxVer = "1.14.2"
     val roomVersion = "2.8.4"
     api("com.badlogicgames.gdx:gdx:$gdxVer")
     api("com.badlogicgames.gdx:gdx-box2d:$gdxVer")
@@ -21,6 +21,14 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.3.0")
+
+    // Headless backend for unit tests to avoid native LWJGL dependencies
+    testImplementation("com.badlogicgames.gdx:gdx-backend-headless:$gdxVer")
+
+    // Add desktop native libraries at test runtime so texture/pixmap code can run during unit tests
+    testImplementation("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-desktop")
+    testImplementation("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-desktop")
+    testImplementation("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-desktop")
 }
 
 java {
