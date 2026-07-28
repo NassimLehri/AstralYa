@@ -3,7 +3,6 @@ package com.astralya.engine.utils
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Texture.TextureFilter
-import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator
 import com.badlogic.gdx.Gdx
 
@@ -12,12 +11,12 @@ import com.badlogic.gdx.Gdx
  */
 class FontManager {
 
-    val tiny:   BitmapFont
-    val small:  BitmapFont
-    val normal: BitmapFont
-    val medium: BitmapFont
-    val large:  BitmapFont
-    val title:  BitmapFont
+    lateinit var tiny:   BitmapFont
+    lateinit var small:  BitmapFont
+    lateinit var normal: BitmapFont
+    lateinit var medium: BitmapFont
+    lateinit var large:  BitmapFont
+    lateinit var title:  BitmapFont
 
     init {
         // Préférence : charger un BitmapFont (.fnt + .png) si présent dans assets/fonts
