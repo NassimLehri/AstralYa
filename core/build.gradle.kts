@@ -26,21 +26,10 @@ dependencies {
     testImplementation("com.badlogicgames.gdx:gdx-backend-headless:$gdxVer")
 
     // Add desktop native libraries at test runtime so texture/pixmap code can run during unit tests
-    // Include per-platform native jars so CI runners can load native methods at test runtime
+    // Desktop native libraries at test runtime (natives-desktop aggregates platform natives)
     testRuntimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-desktop")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-windows")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-linux")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-macos")
-
     testRuntimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-desktop")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-windows")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-linux")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-macos")
-
     testRuntimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-desktop")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-windows")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-linux")
-    testRuntimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-macos")
 }
 
 java {
