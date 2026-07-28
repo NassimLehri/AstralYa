@@ -17,3 +17,20 @@ allprojects {
 tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
 }
+
+// TexturePacker task to generate atlases from assets/sprites -> assets/atlases
+val gdxVersion: String by project
+
+configurations.create("texturePacker")
+dependencies {
+    add("texturePacker", "com.badlogicgames.gdx:gdx-tools:$gdxVersion")
+}
+
+tasks.register<JavaExec>("texturePack") {
+    group = "assets"
+    description = "Pack textures into atlases (input: android/src/main/assets, output: android/src/main/assets/atlases)"
+    classpath = configurations.getByName("texturePacker")
+    mainClass.set("com.badlogic.gdx.tools.texturepacker.TexturePacker")
+    // default args: inputDir outputDir packFileName
+    args("android/src/main/assets/sprites", "android/src/main/assets/atlases", "sprites")
+}
