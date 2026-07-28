@@ -231,8 +231,43 @@ class ResourceManager(private val manager: AssetManager) {
                         }
                     } catch (_: Exception) {}
                 }
+
+                // Also apply subtle tile variations to reduce obvious repetition for large uniform areas
+                try { applyTileVariations(tiledMap) } catch (_: Exception) {}
             }
         } catch (_: Exception) {}
+    }
+
+    private fun applyTileVariations(tiledMap: TiledMap) {
+        // Map of base GID -> candidate variant GIDs (simple heuristic)
+        val variations = mapOf(
+            18 to intArrayOf(18, 19, 20, 21, 22), // deep water variants
+            1 to intArrayOf(1,2,3,4,5,6) // grass variants
+        )
+        val rand = java.util.Random()
+        for (layer in tiledMap.layers) {
+            if (layer is com.badlogic.gdx.maps.tiled.TiledMapTileLayer) {
+                val tileLayer = layer as com.badlogic.gdx.maps.tiled.TiledMapTileLayer
+                for (x in 0 until tileLayer.width) {
+                    for (y in 0 until tileLayer.height) {
+                        val cell = tileLayer.getCell(x, y) ?: continue
+                        val tile = cell.tile ?: continue
+                        val gid = tile.id.toInt()
+                        val candidates = variations[gid] ?: continue
+                        // small probability to swap to a variant to avoid uniform patterns
+                        if (candidates.size > 1 && rand.nextFloat() < 0.18f) {
+                            val pick = candidates[rand.nextInt(candidates.size)]
+                            if (pick != gid) {
+                                try {
+                                    val newTile = tiledMap.tileSets.getTile(pick)
+                                    if (newTile != null) cell.tile = newTile
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     
     fun <T> get(path: String, type: Class<T>): T = manager.get(path, type)
