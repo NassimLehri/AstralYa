@@ -26,9 +26,9 @@ dependencies {
     testImplementation("com.badlogicgames.gdx:gdx-backend-headless:$gdxVer")
 
     // Add desktop native libraries at test runtime so texture/pixmap code can run during unit tests
-    testImplementation("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-desktop")
-    testImplementation("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-desktop")
-    testImplementation("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-desktop")
+    testRuntimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVer:natives-desktop")
+    testRuntimeOnly("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVer:natives-desktop")
+    testRuntimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVer:natives-desktop")
 }
 
 java {

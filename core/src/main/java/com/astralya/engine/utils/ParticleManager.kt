@@ -8,6 +8,8 @@ class ParticleManager {
 
     private val effects = mutableMapOf<String, ParticleEffect>()
     private val activeEffects = mutableListOf<ParticleEffect>()
+    // Keep loaded atlases in memory while particle effects reference them
+    private val _atlases = mutableMapOf<String, com.badlogic.gdx.graphics.g2d.TextureAtlas>()
 
     fun loadEffect(name: String, path: String, imagesDir: String) {
         val effect = ParticleEffect()
@@ -18,12 +20,12 @@ class ParticleManager {
             Gdx.app.error("ParticleManager", "Failed to load effect $name from $path:$imagesDir - trying atlas fallback", e)
             // Fallback: try loading from atlas if imagesDir points to an atlas
             try {
-                val atlas = com.badlogic.gdx.graphics.g2d.TextureAtlas(Gdx.files.internal(imagesDir))
-                effect.load(Gdx.files.internal(path), Gdx.files.internal(""))
-                // replace textures from atlas where possible
-                for (region in atlas.regions) {
-                    // no-op: ParticleEffect will reference regions by name if particle file used atlas names
-                }
+                    val atlas = com.badlogic.gdx.graphics.g2d.TextureAtlas(Gdx.files.internal(imagesDir))
+                    // Prefer the overload that accepts a TextureAtlas so particle image names map to atlas regions
+                    effect.load(Gdx.files.internal(path), atlas)
+                    // Keep atlas referenced so regions remain available while effects are in use
+                    _atlases[name] = atlas
+
             } catch (_: Exception) {
                 // give up, rethrow original
                 throw e
