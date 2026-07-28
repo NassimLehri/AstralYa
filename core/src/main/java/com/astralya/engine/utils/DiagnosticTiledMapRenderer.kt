@@ -1,61 +1,51 @@
 package com.astralya.engine.utils
 
-import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.Batch
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.maps.tiled.TiledMap
-import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 
 /**
- * Diagnostic renderer to provide evidence of tile mapping issues.
+ * Lightweight diagnostic renderer that can render the map and overlay a simple grid for debugging.
  */
-class DiagnosticTiledMapRenderer(map: TiledMap, unitScale: Float, batch: Batch) 
-    : OrthogonalTiledMapRenderer(map, unitScale, batch) {
+class DiagnosticTiledMapRenderer(map: TiledMap, unitScale: Float = 1f, batch: Batch? = null) :
+    if (batch != null) OrthogonalTiledMapRenderer(map, unitScale, batch) else OrthogonalTiledMapRenderer(map, unitScale) {
 
-    private val layerRenderCounts = mutableMapOf<String, Int>()
-    var auditFrame = false
+    private val shape = ShapeRenderer()
 
-    override fun renderTileLayer(layer: TiledMapTileLayer) {
-        val name = layer.name ?: "unnamed"
-        val count = layerRenderCounts.getOrDefault(name, 0) + 1
-        layerRenderCounts[name] = count
-
-        if (auditFrame) {
-            performDeepAudit(layer)
-        }
-
-        super.renderTileLayer(layer)
-    }
-
-    private fun performDeepAudit(layer: TiledMapTileLayer) {
-        Gdx.app.log("ASTRA_AUDIT", "--- AUDIT: ${layer.name} ---")
-        Gdx.app.log("ASTRA_AUDIT", "Render Call Count: ${layerRenderCounts[layer.name]}")
-        
-        var nonEmpty = 0
-        var minGid = Int.MAX_VALUE
-        var maxGid = Int.MIN_VALUE
-
-        for (y in 0 until layer.height) {
-            for (x in 0 until layer.width) {
-                val cell = layer.getCell(x, y) ?: continue
-                nonEmpty++
-                val gid = cell.tile.id
-                if (gid < minGid) minGid = gid
-                if (gid > maxGid) maxGid = gid
-
-                // Pinpoint Zone 10,10 to 15,15
-                if (x in 10..15 && y in 10..15) {
-                    val tile = cell.tile
-                    val reg = tile.textureRegion
-                    Gdx.app.log("ASTRA_AUDIT", "Tile($x,$y) | GID:$gid | Pixels:(${reg.regionX},${reg.regionY}) ${reg.regionWidth}x${reg.regionHeight} | UV:(${reg.u},${reg.v})")
-                }
+    fun renderWithDiagnostics(camera: OrthographicCamera, drawGrid: Boolean = false) {
+        setView(camera)
+        render()
+        if (drawGrid) {
+            // Overlay a translucent grid aligned to the camera for quick visual checks
+            val cam = camera
+            shape.projectionMatrix = cam.combined
+            shape.begin(ShapeRenderer.ShapeType.Line)
+            shape.color = Color(1f, 0f, 0f, 0.35f)
+            // Draw a small grid centered on camera position
+            val cell = 32f
+            val left = cam.position.x - cam.viewportWidth * 0.5f
+            val right = cam.position.x + cam.viewportWidth * 0.5f
+            val bottom = cam.position.y - cam.viewportHeight * 0.5f
+            val top = cam.position.y + cam.viewportHeight * 0.5f
+            var x = (Math.floor((left / cell).toDouble()) * cell).toFloat()
+            while (x < right) {
+                shape.line(x, bottom, x, top)
+                x += cell
             }
+            var y = (Math.floor((bottom / cell).toDouble()) * cell).toFloat()
+            while (y < top) {
+                shape.line(left, y, right, y)
+                y += cell
+            }
+            shape.end()
         }
-        Gdx.app.log("ASTRA_AUDIT", "Non-empty Tiles: $nonEmpty | GID Range: $minGid to $maxGid")
     }
-    
-    fun resetCounts() {
-        layerRenderCounts.clear()
+
+    fun disposeDiagnostics() {
+        shape.dispose()
+        dispose()
     }
 }
