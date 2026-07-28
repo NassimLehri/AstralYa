@@ -1,7 +1,0 @@
-- [x] Update `gradle.properties` to remove legacy flags
-- [x] Update `:android` build script to remove deprecated Kotlin plugin and use `legacy-kapt`
-- [x] Update `:lwjgl3` build script to fix `run` task conflict
-- [x] Perform Gradle sync
-- [x] Verify builds for both `:android` and `:lwjgl3`
-- [x] Fix `AssetLoader.kt` to match actual asset files (ogg vs wav, no atlas)
-- [x] Verify build and ask user to test on emulator

@@ -1,6 +1,0 @@
-- [x] Research and prepare textures for the hero
-- [x] Implement starting map configuration in `GameState.kt`
-- [x] Remove keyboard hints from `MainMenuScreen.kt`
-- [x] Improve hero rendering and add Action button in `ExplorationScreen.kt`
-- [x] Make `UIScreens.kt` (Inventory, Party, Save) touch-friendly
-- [x] Verify changes on device

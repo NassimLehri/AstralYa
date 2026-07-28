@@ -10,3 +10,11 @@ output/
 *.aab
 .DS_Store
 Thumbs.db
+
+# Ignore generated artifacts and temporary audit outputs
+/.artifacts/
+**/baseline_*.png
+**/scratch/
+**/audit_baseline*.png
+**/libs/*.so
+

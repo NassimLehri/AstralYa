@@ -1,4 +1,0 @@
-- [x] Modify `fireflies.p` to fix parsing error
-- [x] Modify `rain.p` to fix parsing error
-- [x] Verify file contents
-- [x] Finalize walkthrough

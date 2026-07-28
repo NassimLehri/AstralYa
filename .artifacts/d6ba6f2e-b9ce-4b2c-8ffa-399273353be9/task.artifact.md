@@ -1,6 +1,0 @@
-- [x] Update `MapSystem.kt` data structures and Registry
-- [x] Update `AssetLoader.kt` to load portal and chest sprites
-- [x] Refactor `ExplorationScreen.kt` to use sprites and background images
-- [x] Fix portal infinite loop logic
-- [ ] Implement selective Tiled layer rendering (Foreground/Over layers)
-- [ ] Verify changes with background images and over-layers

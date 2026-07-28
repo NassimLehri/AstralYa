@@ -10,7 +10,6 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import org.junit.Ignore
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
@@ -24,7 +23,6 @@ class TmxGoldenMasterTest {
         Gdx.app = mock(Application::class.java)
     }
 
-    @Ignore("Requires native image libraries which may not be available in headless test environments")
     @Test
     fun `test village_tmx tile regions are not whole textures`() {
         val files = mock(com.badlogic.gdx.Files::class.java)
