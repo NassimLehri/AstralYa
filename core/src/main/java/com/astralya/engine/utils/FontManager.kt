@@ -47,6 +47,11 @@ class FontManager {
                 medium = BitmapFont(chosen).apply { data.setScale(1.2f) }
                 large  = BitmapFont(chosen).apply { data.setScale(1.6f) }
                 title  = BitmapFont(chosen).apply { data.setScale(2.4f) }
+                // Configure BitmapFont texture filters & integer positions
+                try {
+                    val fonts = listOf(tiny, small, normal, medium, large, title)
+                    fonts.forEach { f -> f.regions.forEach { it.texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest); f.setUseIntegerPositions(true) } }
+                } catch (_: Exception) {}
                 loadedBitmap = true
             }
         }
@@ -68,13 +73,24 @@ class FontManager {
                 parameter.minFilter = TextureFilter.Nearest
                 parameter.magFilter = TextureFilter.Nearest
                 
+                parameter.kerning = true
+                parameter.incremental = true
                 parameter.size = 8; tiny = generator.generateFont(parameter)
                 parameter.size = 10; small = generator.generateFont(parameter)
                 parameter.size = 12; normal = generator.generateFont(parameter)
                 parameter.size = 16; medium = generator.generateFont(parameter)
                 parameter.size = 24; large = generator.generateFont(parameter)
                 parameter.size = 34; title = generator.generateFont(parameter)
-                
+
+                // Configure generated fonts for pixel-perfect rendering
+                fun configure(f: BitmapFont) {
+                    try {
+                        f.regions.forEach { it.texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest) }
+                        f.data.setScale(1f)
+                        f.setUseIntegerPositions(true)
+                    } catch (_: Exception) {}
+                }
+                configure(tiny); configure(small); configure(normal); configure(medium); configure(large); configure(title)
                 generator.dispose()
             } else {
                 // Fallback sur BitmapFont par défaut (Arial 15px) avec mise à l'échelle (moins net)

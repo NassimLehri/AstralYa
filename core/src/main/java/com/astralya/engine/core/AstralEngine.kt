@@ -62,6 +62,8 @@ abstract class AstralEngine : Game(), KoinComponent {
         profiler.reset()
         audioManager.update(Gdx.graphics.deltaTime)
         super.render()
+        // Capture a one-time screenshot if requested (used for automated previews)
+        com.astralya.engine.utils.ScreenshotHelper.maybeCapture()
     }
 
     override fun resize(w: Int, h: Int) {
